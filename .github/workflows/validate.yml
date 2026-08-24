@@ -1,0 +1,66 @@
+name: validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Render
+        shell: pwsh
+        run: ./scripts/render.ps1
+
+      - name: Rendered output is current
+        shell: bash
+        run: |
+          # Fails when build/ was edited by hand or someone changed core/ without
+          # re-rendering. This is what makes committed output trustworthy.
+          if ! git diff --exit-code build/; then
+            echo "build/ is out of date. Run scripts/render.ps1 and commit the result."
+            exit 1
+          fi
+
+      - name: Validate
+        shell: pwsh
+        run: ./scripts/validate.ps1
+
+      - name: Shell script syntax
+        if: runner.os == 'Linux'
+        run: bash -n scripts/install.sh scripts/status.sh scripts/uninstall.sh
+
+      - name: ShellCheck
+        if: runner.os == 'Linux'
+        run: shellcheck scripts/install.sh scripts/status.sh scripts/uninstall.sh
+
+      - name: Install into a temporary home
+        if: runner.os == 'Linux'
+        run: |
+          # Proves install, idempotence, and drift detection without touching the
+          # runner's real home directory.
+          export HOME="$(mktemp -d)"
+          ./scripts/install.sh
+          ./scripts/status.sh
+
+          echo "--- second install must change nothing ---"
+          ./scripts/install.sh | tee /tmp/second.txt
+          grep -q "installed 0 file(s)" /tmp/second.txt
+
+          echo "--- a hand edit must be reported as modified ---"
+          echo "drift" >> "$HOME/.claude/CLAUDE.md"
+          if ./scripts/status.sh; then
+            echo "status did not detect drift"
+            exit 1
+          fi
