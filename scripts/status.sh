@@ -55,6 +55,7 @@ managed="$(jq -r '.entries[].install' "$manifest" | tr -d '\r')"
 
 for root in "$HOME/.claude/skills" "$HOME/.agents/skills" "$HOME/.gemini/skills"; do
   [[ -d "$root" ]] || continue
+  # shellcheck disable=SC2088 # literal display text, not a path being expanded
   display="~/${root#"$HOME"/}"
 
   for dir in "$root"/*/; do
