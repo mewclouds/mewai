@@ -1,0 +1,19 @@
+# Never track provider runtime state, even if a script is run from inside the repo.
+auth.json
+.credentials.json
+history.jsonl
+installation_id
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+sessions/
+shell-snapshots/
+
+# Local scratch
+*.mewai-tmp
+
+# Editor and OS cruft
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
