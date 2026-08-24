@@ -1,0 +1,21 @@
+{
+  "_comment": "Base Claude Code settings owned by mewai. The allow, ask, and deny arrays under permissions are generated from core/policy/policy.json by scripts/render.ps1 and must not be set here. Everything else under permissions, including defaultMode, is yours to edit.",
+  "permissions": {
+    "_comment": "auto mode is what makes the three-tier policy work. Ask rules prompt, deny rules block, and allow rules resolve without reaching the classifier. Under bypassPermissions the ask tier is silently inert. Do not set disableAutoMode here: it turns auto mode off.",
+    "defaultMode": "auto"
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "bash ~/.claude/statusline-command.sh"
+  },
+  "model": "sonnet",
+  "outputStyle": "Proactive",
+  "effortLevel": "medium",
+  "theme": "auto",
+  "editorMode": "normal",
+  "enableWorkflows": true,
+  "autoUpdatesChannel": "latest",
+  "promptSuggestionEnabled": false,
+  "awaySummaryEnabled": false,
+  "switchModelsOnFlag": true
+}

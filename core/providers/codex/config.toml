@@ -1,0 +1,19 @@
+# Codex configuration owned by mewai.
+#
+# Project trust entries are machine-specific. Codex writes them here when you trust
+# a project interactively, which shows up as drift in `status`. That is working as
+# intended: fold the entry into this file when you want it on every machine, or
+# reinstall to discard it.
+
+model = "gpt-5.6-luna"
+model_reasoning_effort = "medium"
+approvals_reviewer = "user"
+
+[windows]
+sandbox = "unelevated"
+
+[projects.'c:\users\mew\winutil']
+trust_level = "trusted"
+
+[projects.'c:\users\mew\mewai']
+trust_level = "trusted"

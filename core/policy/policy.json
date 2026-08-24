@@ -1,0 +1,154 @@
+{
+  "version": 1,
+  "note": "Single source for command boundaries. Rendered into Claude Code permission rules and Codex execpolicy rules. Edit this file, then run scripts/render.ps1.",
+  "decisions": {
+    "allow": "Runs without a prompt. Reserved for commands that cannot change state.",
+    "confirm": "Prompts every time. Survives bypassPermissions in Claude Code.",
+    "forbid": "Blocked. Survives bypassPermissions in Claude Code."
+  },
+  "rules": [
+    {
+      "id": "read-only-inspection",
+      "decision": "allow",
+      "why": "Inspection changes nothing, so approving it only costs attention.",
+      "commands": [
+        "rg",
+        "fd",
+        "ls",
+        "cat",
+        "head",
+        "tail",
+        "wc",
+        "sort",
+        "uniq",
+        "jq",
+        "git status",
+        "git diff",
+        "git log",
+        "git show",
+        "git branch",
+        "git rev-parse",
+        "git ls-files",
+        "gh pr view",
+        "gh pr list",
+        "gh pr checks",
+        "gh pr diff",
+        "gh issue view",
+        "gh issue list",
+        "gh repo view",
+        "gh run view",
+        "gh run list"
+      ]
+    },
+    {
+      "id": "history-rewrite",
+      "decision": "forbid",
+      "why": "Recovering a force-pushed branch or a hard reset is manual and error prone. Make a focused reversible change instead.",
+      "commands": [
+        "git push --force",
+        "git push -f",
+        "git push --force-with-lease",
+        "git reset --hard",
+        "git clean",
+        "git rebase --interactive",
+        "git filter-branch"
+      ],
+      "claude_rules": [
+        "Bash(git push * --force*)",
+        "Bash(git push * -f)",
+        "Bash(git push * -f *)",
+        "PowerShell(git push * --force*)",
+        "PowerShell(git push * -f)",
+        "PowerShell(git push * -f *)"
+      ],
+      "why_extra_rules": "A prefix rule only matches when the flag is the third word. 'git push origin main --force' has it fifth, so the prefix rules above miss it. Codex prefix_rule cannot express a flag at an arbitrary position, so this gap is closed on the Claude side only. See docs/PROVIDERS.md."
+    },
+    {
+      "id": "discard-work",
+      "decision": "forbid",
+      "why": "These throw away uncommitted work with no undo. Inspect and revert exact files instead.",
+      "commands": [
+        "git checkout --",
+        "git restore --staged --worktree",
+        "git stash drop",
+        "git stash clear",
+        "git branch -D"
+      ]
+    },
+    {
+      "id": "remote-destruction",
+      "decision": "forbid",
+      "why": "Deleting a remote repository or release is never an incidental development action. Do it by hand after verifying the exact target.",
+      "commands": [
+        "gh repo delete",
+        "gh release delete",
+        "gh cache delete"
+      ]
+    },
+    {
+      "id": "recursive-delete",
+      "decision": "forbid",
+      "why": "A recursive force delete with a wrong or empty variable in the path is unrecoverable.",
+      "commands": [
+        "rm -rf",
+        "rm -fr"
+      ],
+      "claude_rules": [
+        "PowerShell(Remove-Item * -Recurse *)",
+        "PowerShell(rm * -Recurse *)"
+      ]
+    },
+    {
+      "id": "publish-and-share",
+      "decision": "confirm",
+      "why": "Pushing, publishing, and messaging are visible to other people the moment they run, and approval for one does not carry to the next.",
+      "commands": [
+        "git push",
+        "git commit",
+        "git tag",
+        "git remote",
+        "gh pr create",
+        "gh pr merge",
+        "gh pr close",
+        "gh issue create",
+        "gh issue close",
+        "gh release create",
+        "gh workflow run",
+        "npm publish",
+        "cargo publish",
+        "docker push"
+      ]
+    },
+    {
+      "id": "dependency-mutation",
+      "decision": "confirm",
+      "why": "Installing packages runs third-party install scripts and rewrites lockfiles that the rest of the project depends on.",
+      "commands": [
+        "npm install",
+        "npm i",
+        "pnpm add",
+        "yarn add",
+        "pip install",
+        "cargo install"
+      ]
+    },
+    {
+      "id": "secret-files",
+      "decision": "forbid",
+      "why": "Reading a credential into the transcript exposes it to the model provider and to anyone the transcript is later shared with.",
+      "commands": [],
+      "claude_rules": [
+        "Read(./.env)",
+        "Read(./.env.*)",
+        "Read(./**/.env)",
+        "Read(./**/*.pem)",
+        "Read(./**/id_rsa)",
+        "Read(./**/id_ed25519)",
+        "Read(~/.ssh/**)",
+        "Read(~/.aws/credentials)",
+        "Read(~/.codex/auth.json)",
+        "Read(~/.claude/.credentials.json)"
+      ]
+    }
+  ]
+}
