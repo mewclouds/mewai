@@ -1,18 +1,23 @@
 {
+  "enableWorkflows": true,
   "statusLine": {
     "type": "command",
     "command": "bash ~/.claude/statusline-command.sh"
   },
-  "model": "sonnet",
   "outputStyle": "Proactive",
   "effortLevel": "medium",
-  "theme": "auto",
-  "editorMode": "normal",
-  "enableWorkflows": true,
-  "autoUpdatesChannel": "latest",
+  "modelSettings": {
+    "claude-sonnet-5": {
+      "effortLevel": "high"
+    }
+  },
   "promptSuggestionEnabled": false,
   "awaySummaryEnabled": false,
+  "autoUpdatesChannel": "latest",
+  "theme": "auto",
+  "editorMode": "normal",
   "switchModelsOnFlag": true,
+  "model": "sonnet",
   "permissions": {
     "defaultMode": "auto",
     "allow": [

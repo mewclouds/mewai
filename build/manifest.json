@@ -46,7 +46,7 @@
         "core/providers/claude/settings.json",
         "core/policy/policy.json"
       ],
-      "sha256": "d6880950bc0ebb8627f77d2c33cc320ee7982e9cd72a5d9b38d7cdb665357a2b"
+      "sha256": "63c776640ed22e432272a12a42e3ef37320b5e81d83b107fc0073815fe904e88"
     },
     {
       "build": "build/codex/rules/default.rules",
@@ -236,6 +236,33 @@
         "core/skills/gh-issue/SKILL.md"
       ],
       "sha256": "5c9cc86b8b62c4d292a1bc28c0ec85f659f6198c3f88e493df4572e1624e8651"
+    },
+    {
+      "build": "build/claude/skills/i-have-adhd/SKILL.md",
+      "install": "~/.claude/skills/i-have-adhd/SKILL.md",
+      "action": "copy",
+      "sources": [
+        "core/skills/i-have-adhd/SKILL.md"
+      ],
+      "sha256": "b663e0b7a468273d58381f0ee9530a18246ac8b0393e62f74eaf110800acdfd3"
+    },
+    {
+      "build": "build/codex/skills/i-have-adhd/SKILL.md",
+      "install": "~/.agents/skills/i-have-adhd/SKILL.md",
+      "action": "copy",
+      "sources": [
+        "core/skills/i-have-adhd/SKILL.md"
+      ],
+      "sha256": "b663e0b7a468273d58381f0ee9530a18246ac8b0393e62f74eaf110800acdfd3"
+    },
+    {
+      "build": "build/antigravity/skills/i-have-adhd/SKILL.md",
+      "install": "~/.gemini/skills/i-have-adhd/SKILL.md",
+      "action": "copy",
+      "sources": [
+        "core/skills/i-have-adhd/SKILL.md"
+      ],
+      "sha256": "b663e0b7a468273d58381f0ee9530a18246ac8b0393e62f74eaf110800acdfd3"
     },
     {
       "build": "build/claude/skills/rule-tender/SKILL.md",
