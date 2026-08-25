@@ -69,7 +69,9 @@ An earlier version of this repo rendered `policy.json` into `~/.gemini/antigravi
 
 ## Machine-local state
 
-`~/.codex/config.toml` is rendered from `core/providers/codex/config.toml`, which includes project trust entries. Codex writes to that file itself when you trust a project interactively, so a new trust entry shows up in `status` as drift. Fold it into the source file when you want it on every machine, or reinstall to discard it.
+`~/.codex/config.toml` is rendered from `core/providers/codex/config.toml`, which includes project trust entries. Codex writes to that file itself when you trust a project interactively, so a new trust entry shows up in `status` as drift. Fold it into the source file with `scripts/reverse.ps1` (or `scripts/reverse.sh`) when you want it on every machine, or reinstall to discard it.
+
+The same applies to `~/.claude/settings.json` when options change from the Claude Code CLI. Running `reverse` pulls the new settings into `core/providers/claude/settings.json` while keeping policy rules untouched, then re-renders and installs.
 
 `~/.gemini/antigravity-cli/settings.json` is not managed by mewai at all, for the reasons in "Antigravity does not get rendered permissions" above. Its `toolPermission`, `trustedWorkspaces`, `model`, and every other field are entirely yours to set, and mewai will not overwrite or report drift on any of it. `status` never lists this file, because it is no longer in the manifest.
 

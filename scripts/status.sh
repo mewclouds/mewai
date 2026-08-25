@@ -85,7 +85,7 @@ printf '\n%d in sync, %d modified, %d not installed, %d unmanaged\n' \
 
 if ((${#modified[@]} > 0)); then
   printf '\n%s\n' 'A modified file was edited after install, or the source changed and was not reinstalled.'
-  printf '%s\n' 'Run scripts/install.sh to overwrite, after saving anything worth keeping.'
+  printf '%s\n' 'Run scripts/reverse.sh to pull settings changes into core/, or scripts/install.sh to overwrite.'
 fi
 
 if ((${#modified[@]} > 0 || ${#missing[@]} > 0)); then

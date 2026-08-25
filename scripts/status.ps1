@@ -90,7 +90,7 @@ Write-Host ("{0} in sync, {1} modified, {2} not installed, {3} unmanaged" -f
 if ($modified.Count -gt 0) {
     Write-Host ''
     Write-Host 'A modified file was edited after install, or the source changed and was not reinstalled.'
-    Write-Host 'Run scripts/install.ps1 to overwrite, after saving anything worth keeping.'
+    Write-Host 'Run scripts/reverse.ps1 to pull settings changes into core/, or scripts/install.ps1 to overwrite.'
 }
 
 if ($modified.Count -gt 0 -or $missing.Count -gt 0) { exit 1 }

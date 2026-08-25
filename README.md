@@ -46,6 +46,14 @@ Check whether anything drifted:
 
 It reports four groups: in sync, modified on disk, not installed, and installed but not managed by mewai. That last group is what catches a skill I deleted from `core/` that's still sitting in a provider directory, still loading into context.
 
+When you change settings interactively in Claude Code or Codex, pull them into the repo:
+
+```bash
+./scripts/reverse.sh
+```
+
+Or `pwsh ./scripts/reverse.ps1` on Windows. It strips generated policy rules, updates `core/providers/`, re-renders, and brings installed files back in sync.
+
 After changing anything under `core/`:
 
 ```bash
@@ -71,7 +79,7 @@ That's a dry run. I add `--confirm` to actually remove them. Everything removed 
 | `core/providers/` | Provider config that isn't derived from anything else |
 | `core/skills/` | Reusable workflows, provider-neutral |
 | `build/` | Generated. Committed on purpose. Never edit by hand |
-| `scripts/` | render, validate, install, status, uninstall |
+| `scripts/` | render, validate, install, status, reverse, uninstall |
 | `docs/` | Reference, loaded only when I link or request it |
 
 `docs/AUTHORING.md` covers how I add a rule or a skill without bloating what the agent loads every session. `docs/PROVIDERS.md` covers what each provider reads and where they differ.
