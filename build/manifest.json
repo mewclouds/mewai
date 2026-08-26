@@ -46,7 +46,7 @@
         "core/providers/claude/settings.json",
         "core/policy/policy.json"
       ],
-      "sha256": "63c776640ed22e432272a12a42e3ef37320b5e81d83b107fc0073815fe904e88"
+      "sha256": "f8714c4b4854715cb55557ff14edebfe56bbb94d5d3143233db5c5277b76a84f"
     },
     {
       "build": "build/codex/rules/default.rules",

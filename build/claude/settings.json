@@ -18,6 +18,11 @@
   "editorMode": "normal",
   "switchModelsOnFlag": true,
   "model": "sonnet",
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
+  "sessionUrl": false,
   "permissions": {
     "defaultMode": "auto",
     "allow": [

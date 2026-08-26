@@ -22,5 +22,10 @@
   "theme": "auto",
   "editorMode": "normal",
   "switchModelsOnFlag": true,
-  "model": "sonnet"
+  "model": "sonnet",
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
+  "sessionUrl": false
 }
