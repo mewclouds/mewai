@@ -103,6 +103,33 @@
       "sha256": "76dd7b388fb189c203bf9905c55f86aa2ee7e400bed20bc01db37d62fc9d462a"
     },
     {
+      "build": "build/claude/skills/commit-message/SKILL.md",
+      "install": "~/.claude/skills/commit-message/SKILL.md",
+      "action": "copy",
+      "sources": [
+        "core/skills/commit-message/SKILL.md"
+      ],
+      "sha256": "f8487df53ac6db3eea94fe8dd9a2e6b2e0f2371d61e37eeb5e81d5cc9238d85d"
+    },
+    {
+      "build": "build/codex/skills/commit-message/SKILL.md",
+      "install": "~/.agents/skills/commit-message/SKILL.md",
+      "action": "copy",
+      "sources": [
+        "core/skills/commit-message/SKILL.md"
+      ],
+      "sha256": "f8487df53ac6db3eea94fe8dd9a2e6b2e0f2371d61e37eeb5e81d5cc9238d85d"
+    },
+    {
+      "build": "build/antigravity/skills/commit-message/SKILL.md",
+      "install": "~/.gemini/skills/commit-message/SKILL.md",
+      "action": "copy",
+      "sources": [
+        "core/skills/commit-message/SKILL.md"
+      ],
+      "sha256": "f8487df53ac6db3eea94fe8dd9a2e6b2e0f2371d61e37eeb5e81d5cc9238d85d"
+    },
+    {
       "build": "build/claude/skills/create-pr/SKILL.md",
       "install": "~/.claude/skills/create-pr/SKILL.md",
       "action": "copy",
