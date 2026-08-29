@@ -27,24 +27,37 @@ $BuildDir = Join-Path $RepoRoot 'build'
 # Order matters: shared behavior first, provider notes last.
 $SharedModules = @('base.md', 'autonomy.md', 'explainability.md')
 
+# One entry per provider, holding everything that differs. Adding a provider is
+# adding a row here. A null SkillsInstallRoot means the provider already reads a
+# root another provider installs to, so mewai renders no second copy for it.
 $Providers = @(
     @{
-        Name            = 'claude'
-        InstructionFile = 'CLAUDE.md'
-        ProviderModule  = 'providers/claude.md'
-        SkillsSubdir    = 'skills'
+        Name               = 'claude'
+        InstructionFile    = 'CLAUDE.md'
+        InstructionInstall = '~/.claude/CLAUDE.md'
+        ProviderModule     = 'providers/claude.md'
+        SkillsInstallRoot  = '~/.claude/skills'
     },
     @{
-        Name            = 'codex'
-        InstructionFile = 'AGENTS.md'
-        ProviderModule  = 'providers/codex.md'
-        SkillsSubdir    = 'skills'
+        Name               = 'codex'
+        InstructionFile    = 'AGENTS.md'
+        InstructionInstall = '~/.codex/AGENTS.md'
+        ProviderModule     = 'providers/codex.md'
+        SkillsInstallRoot  = '~/.agents/skills'
     },
     @{
-        Name            = 'antigravity'
-        InstructionFile = 'GEMINI.md'
-        ProviderModule  = 'providers/antigravity.md'
-        SkillsSubdir    = 'skills'
+        Name               = 'antigravity'
+        InstructionFile    = 'GEMINI.md'
+        InstructionInstall = '~/.gemini/GEMINI.md'
+        ProviderModule     = 'providers/antigravity.md'
+        SkillsInstallRoot  = '~/.gemini/skills'
+    },
+    @{
+        Name               = 'opencode'
+        InstructionFile    = 'AGENTS.md'
+        InstructionInstall = '~/.config/opencode/AGENTS.md'
+        ProviderModule     = 'providers/opencode.md'
+        SkillsInstallRoot  = $null
     }
 )
 
@@ -152,6 +165,14 @@ function New-ClaudeSettings {
                 $buckets[$key] += $raw
             }
         }
+
+        # read_paths is a file-read boundary rather than a command one. Claude Code
+        # matches it with the Read() tool matcher.
+        if ($rule.PSObject.Properties.Name -contains 'read_paths') {
+            foreach ($path in $rule.read_paths) {
+                $buckets[$key] += "Read($path)"
+            }
+        }
     }
 
     # Keys starting with an underscore are notes for whoever edits the source file.
@@ -182,7 +203,125 @@ function New-ClaudeSettings {
 
     $settings['permissions'] = $permissions
 
-    ($settings | ConvertTo-Json -Depth 6) + "`n"
+    ($settings | ConvertTo-Json -Depth 32 -WarningAction Stop) + "`n"
+}
+
+function ConvertTo-OpenCodeReadPattern {
+    <#
+        Turns a policy read path into the OpenCode permission.read patterns that
+        cover it. OpenCode matches file paths and expands a leading tilde, so the
+        repository-relative "./" prefix Claude Code uses means nothing there. A path
+        without one is also given a "**/" variant, because the same secret file at a
+        nested path is the same secret.
+    #>
+    param([string]$Path)
+
+    $normalized = $Path -replace '^\./', ''
+    if ($normalized.StartsWith('~')) {
+        return @($normalized)
+    }
+
+    $patterns = @($normalized)
+    if (-not $normalized.StartsWith('**/')) {
+        $patterns += "**/$normalized"
+    }
+    $patterns
+}
+
+function New-OpenCodeSettings {
+    <#
+        Emits the complete OpenCode config: the base settings from
+        core/providers/opencode/opencode.json with the rendered permission block
+        injected.
+
+        OpenCode evaluates permission patterns last-match-wins, so tier order in the
+        emitted object is part of the meaning, not formatting. Allow patterns are
+        written first and deny patterns last, which is what makes a deny outrank an
+        overlapping allow. Reordering this by hand downgrades a boundary silently.
+
+        Unlike Claude Code there is one bash matcher rather than separate Bash() and
+        PowerShell() ones, so each command produces one pattern set instead of two.
+    #>
+    param([object]$Policy)
+
+    $basePath = Join-Path $CoreDir 'providers/opencode/opencode.json'
+    if (-not (Test-Path $basePath)) {
+        throw 'core/providers/opencode/opencode.json not found'
+    }
+    $base = Get-Content -Path $basePath -Raw | ConvertFrom-Json
+
+    $buckets = @{ allow = @(); ask = @(); deny = @() }
+    $keyFor = @{ allow = 'allow'; confirm = 'ask'; forbid = 'deny' }
+
+    # An ordinal comparer, not [ordered]@{}. PowerShell's default ordered hashtable
+    # compares keys case insensitively, which silently collapses a pattern pair that
+    # differs only in casing, such as -Recurse and -recurse, down to whichever came
+    # last. Shell command patterns are case sensitive strings.
+    $readPatterns = [System.Collections.Specialized.OrderedDictionary]::new([System.StringComparer]::Ordinal)
+
+    foreach ($rule in $Policy.rules) {
+        $key = $keyFor[$rule.decision]
+
+        foreach ($command in $rule.commands) {
+            # The bare form and the trailing-wildcard form together cover both
+            # "git clean" and "git clean -fd". A trailing "*" alone would not match
+            # the bare invocation, because it needs the separating space.
+            $buckets[$key] += $command
+            $buckets[$key] += "$command *"
+
+            # Wrappers such as rtk, npx, and docker exec run their arguments without
+            # appearing to. A leading wildcard catches the laundered form. Only for
+            # rules that restrict: broadening an allow this way would approve
+            # anything that merely ends with the right words.
+            if ($rule.decision -ne 'allow') {
+                $buckets[$key] += "* $command"
+                $buckets[$key] += "* $command *"
+            }
+        }
+
+        if ($rule.PSObject.Properties.Name -contains 'opencode_rules') {
+            foreach ($raw in $rule.opencode_rules) {
+                $buckets[$key] += $raw
+            }
+        }
+
+        if ($rule.PSObject.Properties.Name -contains 'read_paths') {
+            foreach ($path in $rule.read_paths) {
+                foreach ($pattern in (ConvertTo-OpenCodeReadPattern -Path $path)) {
+                    if ($readPatterns.Contains($pattern)) { $readPatterns.Remove($pattern) }
+                    $readPatterns[$pattern] = $key
+                }
+            }
+        }
+    }
+
+    $bash = [System.Collections.Specialized.OrderedDictionary]::new([System.StringComparer]::Ordinal)
+    foreach ($tier in @('allow', 'ask', 'deny')) {
+        foreach ($pattern in $buckets[$tier]) {
+            # Re-adding moves the key to the end, so a pattern claimed by two tiers
+            # ends up in the later and stricter one. Position is the decision here.
+            if ($bash.Contains($pattern)) { $bash.Remove($pattern) }
+            $bash[$pattern] = $tier
+        }
+    }
+
+    $settings = [ordered]@{}
+    foreach ($property in $base.PSObject.Properties) {
+        if ($property.Name -eq 'permission') {
+            throw 'core/providers/opencode/opencode.json must not set permission. It is generated from core/policy/policy.json.'
+        }
+        # Keys starting with an underscore are notes for whoever edits the source
+        # file. OpenCode should never see them.
+        if ($property.Name.StartsWith('_')) { continue }
+        $settings[$property.Name] = $property.Value
+    }
+
+    $settings['permission'] = [ordered]@{
+        bash = $bash
+        read = $readPatterns
+    }
+
+    ($settings | ConvertTo-Json -Depth 32 -WarningAction Stop) + "`n"
 }
 
 function New-CodexRules {
@@ -260,11 +399,7 @@ foreach ($provider in $Providers) {
 
     $manifestEntries.Add([ordered]@{
         build   = "build/$($provider.Name)/$($provider.InstructionFile)"
-        install = switch ($provider.Name) {
-            'claude' { '~/.claude/CLAUDE.md' }
-            'codex' { '~/.codex/AGENTS.md' }
-            'antigravity' { '~/.gemini/GEMINI.md' }
-        }
+        install = $provider.InstructionInstall
         action  = 'copy'
         sources = $sources
         sha256  = Get-Sha256 -Path $target
@@ -297,6 +432,12 @@ $configTargets = @(
         Install = '~/.claude/statusline-command.sh'
         Content = (Get-Content -Path (Join-Path $CoreDir 'providers/claude/statusline-command.sh') -Raw)
         Sources = @('core/providers/claude/statusline-command.sh')
+    },
+    @{
+        Build   = 'build/opencode/opencode.jsonc'
+        Install = '~/.config/opencode/opencode.jsonc'
+        Content = New-OpenCodeSettings -Policy $policy
+        Sources = @('core/providers/opencode/opencode.json', 'core/policy/policy.json')
     }
 )
 
@@ -313,29 +454,25 @@ foreach ($target in $configTargets) {
     })
 }
 
-# Skills are provider-neutral, so both providers get byte-identical copies. This is
-# the drift that started this repository: the same four skills lived in two
-# directories as separate files and one of them was edited alone.
-$SkillInstallRoots = @{
-    claude      = '~/.claude/skills'
-    codex       = '~/.agents/skills'
-    antigravity = '~/.gemini/skills'
-}
-
+# Skills are provider-neutral, so every provider that needs its own copy gets a
+# byte-identical one. This is the drift that started this repository: the same four
+# skills lived in two directories as separate files and one of them was edited alone.
 $skillsSource = Join-Path $CoreDir 'skills'
 $skillNames = @(Get-ChildItem -Path $skillsSource -Directory | Sort-Object Name)
+
+$skillProviders = @($Providers | Where-Object { $_.SkillsInstallRoot })
 
 foreach ($skill in $skillNames) {
     $content = (Get-Content -Path (Join-Path $skill.FullName 'SKILL.md') -Raw)
 
-    foreach ($providerName in @('claude', 'codex', 'antigravity')) {
-        $relative = "build/$providerName/skills/$($skill.Name)/SKILL.md"
+    foreach ($provider in $skillProviders) {
+        $relative = "build/$($provider.Name)/skills/$($skill.Name)/SKILL.md"
         $path = Join-Path $RepoRoot $relative
         Write-RenderedFile -Path $path -Content $content
 
         $manifestEntries.Add([ordered]@{
             build   = $relative
-            install = "$($SkillInstallRoots[$providerName])/$($skill.Name)/SKILL.md"
+            install = "$($provider.SkillsInstallRoot)/$($skill.Name)/SKILL.md"
             action  = 'copy'
             sources = @("core/skills/$($skill.Name)/SKILL.md")
             sha256  = Get-Sha256 -Path $path
@@ -350,6 +487,6 @@ $manifest = [ordered]@{
 }
 
 Write-RenderedFile -Path (Join-Path $BuildDir 'manifest.json') `
-    -Content (($manifest | ConvertTo-Json -Depth 6) + "`n")
+    -Content (($manifest | ConvertTo-Json -Depth 32 -WarningAction Stop) + "`n")
 
 Write-Host "rendered $($manifestEntries.Count) file(s) into build/"

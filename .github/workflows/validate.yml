@@ -39,11 +39,11 @@ jobs:
 
       - name: Shell script syntax
         if: runner.os == 'Linux'
-        run: bash -n scripts/install.sh scripts/status.sh scripts/uninstall.sh
+        run: bash -n scripts/install.sh scripts/status.sh scripts/uninstall.sh scripts/reverse.sh
 
       - name: ShellCheck
         if: runner.os == 'Linux'
-        run: shellcheck scripts/install.sh scripts/status.sh scripts/uninstall.sh
+        run: shellcheck scripts/install.sh scripts/status.sh scripts/uninstall.sh scripts/reverse.sh
 
       - name: Install into a temporary home
         if: runner.os == 'Linux'

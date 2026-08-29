@@ -4,9 +4,9 @@
     Pulls locally modified settings into core/ and re-renders.
 
 .DESCRIPTION
-    Reverse of install: reads installed provider settings files (~/.claude/settings.json
-    and ~/.codex/config.toml), strips any generated policy permissions, and writes
-    the user settings back into core/providers/.
+    Reverse of install: reads installed provider settings files (~/.claude/settings.json,
+    ~/.codex/config.toml, and ~/.config/opencode/opencode.jsonc), strips any generated
+    policy permissions, and writes the user settings back into core/providers/.
 
     Only settings files are reversed. Skills, instructions, and policy rules are
     never reversed.
@@ -92,7 +92,7 @@ if (Test-Path $claudeInstalled) {
             $reversedClaude[$prop.Name] = $prop.Value
         }
 
-        $claudeJson = ($reversedClaude | ConvertTo-Json -Depth 10) + "`n"
+        $claudeJson = ($reversedClaude | ConvertTo-Json -Depth 32 -WarningAction Stop) + "`n"
 
         if ($DryRun) {
             Write-Host "would reverse ~/.claude/settings.json -> core/providers/claude/settings.json"
@@ -123,6 +123,48 @@ if (Test-Path $codexInstalled) {
         else {
             Write-Utf8NoBom -Path $codexCore -Content $content
             Write-Host "reversed ~/.codex/config.toml -> core/providers/codex/config.toml"
+        }
+        $reversedCount++
+    }
+}
+
+# --- opencode config ---------------------------------------------------------
+$openCodeInstalled = Join-Path $HomeDir '.config/opencode/opencode.jsonc'
+$openCodeBuild = Join-Path $BuildDir 'opencode/opencode.jsonc'
+$openCodeCore = Join-Path $CoreDir 'providers/opencode/opencode.json'
+
+if (Test-Path $openCodeInstalled) {
+    $installedSha = Get-FileSha256 -Path $openCodeInstalled
+    $buildSha = Get-FileSha256 -Path $openCodeBuild
+
+    if ($installedSha -ne $buildSha) {
+        $installed = Get-Content -Path $openCodeInstalled -Raw | ConvertFrom-Json
+        $coreExisting = if (Test-Path $openCodeCore) { Get-Content -Path $openCodeCore -Raw | ConvertFrom-Json } else { $null }
+
+        $reversedOpenCode = [ordered]@{}
+
+        $topComment = if ($coreExisting -and ($coreExisting.PSObject.Properties.Name -contains '_comment')) {
+            $coreExisting._comment
+        } else {
+            'Base OpenCode settings owned by mewai. The permission block is generated from core/policy/policy.json by scripts/render.ps1 and must not be set here. Everything else is yours to edit.'
+        }
+        $reversedOpenCode['_comment'] = $topComment
+
+        # Dropping permission is what keeps generated policy output from being
+        # laundered back into source on the next reverse.
+        foreach ($prop in $installed.PSObject.Properties) {
+            if ($prop.Name.StartsWith('_') -or $prop.Name -eq 'permission') { continue }
+            $reversedOpenCode[$prop.Name] = $prop.Value
+        }
+
+        $openCodeJson = ($reversedOpenCode | ConvertTo-Json -Depth 32 -WarningAction Stop) + "`n"
+
+        if ($DryRun) {
+            Write-Host "would reverse ~/.config/opencode/opencode.jsonc -> core/providers/opencode/opencode.json"
+        }
+        else {
+            Write-Utf8NoBom -Path $openCodeCore -Content $openCodeJson
+            Write-Host "reversed ~/.config/opencode/opencode.jsonc -> core/providers/opencode/opencode.json"
         }
         $reversedCount++
     }

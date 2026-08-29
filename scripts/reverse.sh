@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Pulls locally modified settings into core/ and re-renders.
 #
-# Reverse of install: reads installed provider settings files (~/.claude/settings.json
-# and ~/.codex/config.toml), strips any generated policy permissions, and writes
-# the user settings back into core/providers/.
+# Reverse of install: reads installed provider settings files (~/.claude/settings.json,
+# ~/.codex/config.toml, and ~/.config/opencode/opencode.jsonc), strips any generated
+# policy permissions, and writes the user settings back into core/providers/.
 #
 # Only settings files are reversed. Skills, instructions, and policy rules are
 # never reversed.
@@ -98,6 +98,45 @@ if [[ -f "$codex_installed" ]]; then
     else
       tr -d '\r' < "$codex_installed" > "$codex_core"
       printf 'reversed ~/.codex/config.toml -> core/providers/codex/config.toml\n'
+    fi
+    reversed_count=$((reversed_count + 1))
+  fi
+fi
+
+# --- opencode config ---------------------------------------------------------
+opencode_installed="$HOME/.config/opencode/opencode.jsonc"
+opencode_build="$repo_root/build/opencode/opencode.jsonc"
+opencode_core="$repo_root/core/providers/opencode/opencode.json"
+
+if [[ -f "$opencode_installed" ]]; then
+  installed_sha="$(sha_of "$opencode_installed")"
+  build_sha=""
+  if [[ -f "$opencode_build" ]]; then
+    build_sha="$(sha_of "$opencode_build")"
+  fi
+
+  if [[ "$installed_sha" != "$build_sha" ]]; then
+    # The installed file is .jsonc, so comments are legal there and OpenCode may
+    # write them. jq cannot read those, and stripping them here is not safe because
+    # the $schema value legitimately contains "//". Fail with the fix rather than a
+    # parse error, or worse, a mangled source file.
+    if ! jq -e . "$opencode_installed" >/dev/null 2>&1; then
+      printf 'error: %s is not plain JSON, most likely because it contains comments. jq cannot read those. Run scripts/reverse.ps1 instead, which can.\n' "$opencode_installed" >&2
+      exit 1
+    fi
+
+    if "$dry_run"; then
+      printf 'would reverse ~/.config/opencode/opencode.jsonc -> core/providers/opencode/opencode.json\n'
+    else
+      # Dropping permission is what keeps generated policy output from being
+      # laundered back into source on the next reverse.
+      temp_out="$(mktemp)"
+      jq --slurpfile core "$opencode_core" '
+        ._comment = ($core[0]._comment // "Base OpenCode settings owned by mewai. The permission block is generated from core/policy/policy.json by scripts/render.ps1 and must not be set here. Everything else is yours to edit.") |
+        {_comment} + (del(._comment, .permission))
+      ' "$opencode_installed" | tr -d '\r' > "$temp_out"
+      mv "$temp_out" "$opencode_core"
+      printf 'reversed ~/.config/opencode/opencode.jsonc -> core/providers/opencode/opencode.json\n'
     fi
     reversed_count=$((reversed_count + 1))
   fi

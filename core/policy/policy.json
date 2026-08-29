@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "note": "Single source for command boundaries. Rendered into Claude Code permission rules and Codex execpolicy rules. Edit this file, then run scripts/render.ps1.",
+  "note": "Single source for command boundaries. Rendered into Claude Code permission rules, Codex execpolicy rules, and OpenCode permission patterns. Edit this file, then run scripts/render.ps1.",
   "decisions": {
     "allow": "Runs without a prompt. Reserved for commands that cannot change state.",
     "confirm": "Prompts every time. Survives bypassPermissions in Claude Code.",
@@ -61,7 +61,12 @@
         "PowerShell(git push * -f)",
         "PowerShell(git push * -f *)"
       ],
-      "why_extra_rules": "A prefix rule only matches when the flag is the third word. 'git push origin main --force' has it fifth, so the prefix rules above miss it. Codex prefix_rule cannot express a flag at an arbitrary position, so this gap is closed on the Claude side only. See docs/PROVIDERS.md."
+      "opencode_rules": [
+        "git push * --force*",
+        "git push * -f",
+        "git push * -f *"
+      ],
+      "why_extra_rules": "A prefix rule only matches when the flag is the third word. 'git push origin main --force' has it fifth, so the prefix rules above miss it. Claude Code and OpenCode both express a wildcard mid-pattern and close the gap. Codex prefix_rule cannot, so the Codex guarantee stays narrower. See docs/PROVIDERS.md."
     },
     {
       "id": "discard-work",
@@ -94,9 +99,25 @@
         "rm -fr"
       ],
       "claude_rules": [
-        "PowerShell(Remove-Item * -Recurse *)",
-        "PowerShell(rm * -Recurse *)"
-      ]
+        "PowerShell(Remove-Item *-Recurse*)",
+        "PowerShell(Remove-Item *-recurse*)",
+        "PowerShell(rm *-Recurse*)",
+        "PowerShell(rm *-recurse*)",
+        "PowerShell(ri *-Recurse*)",
+        "PowerShell(ri *-recurse*)",
+        "PowerShell(rd *-Recurse*)",
+        "PowerShell(rd *-recurse*)",
+        "PowerShell(del *-Recurse*)",
+        "PowerShell(del *-recurse*)"
+      ],
+      "opencode_rules": [
+        "Remove-Item *-?ecurse*",
+        "rm *-?ecurse*",
+        "ri *-?ecurse*",
+        "rd *-?ecurse*",
+        "del *-?ecurse*"
+      ],
+      "why_extra_rules": "rm -rf is the POSIX form. Under PowerShell the destructive command is Remove-Item with a recurse switch, reachable through the aliases rm, ri, rd, and del. The earlier pattern 'Remove-Item * -Recurse *' required a space-delimited flag with an argument before it, so 'Remove-Item -Recurse -Force ./x' escaped it. Anchoring the wildcard directly against the switch covers both orderings. PowerShell accepts any casing, and neither matcher documents case handling, so Claude gets both spellings listed and OpenCode uses its single-character wildcard to cover them in one pattern. Not covered by either: an all-caps -RECURSE, or the abbreviated -r switch, which no glob distinguishes from a path containing -r."
     },
     {
       "id": "publish-and-share",
@@ -137,18 +158,19 @@
       "decision": "forbid",
       "why": "Reading a credential into the transcript exposes it to the model provider and to anyone the transcript is later shared with.",
       "commands": [],
-      "claude_rules": [
-        "Read(./.env)",
-        "Read(./.env.*)",
-        "Read(./**/.env)",
-        "Read(./**/*.pem)",
-        "Read(./**/id_rsa)",
-        "Read(./**/id_ed25519)",
-        "Read(~/.ssh/**)",
-        "Read(~/.aws/credentials)",
-        "Read(~/.codex/auth.json)",
-        "Read(~/.claude/.credentials.json)"
-      ]
+      "read_paths": [
+        "./.env",
+        "./.env.*",
+        "./**/.env",
+        "./**/*.pem",
+        "./**/id_rsa",
+        "./**/id_ed25519",
+        "~/.ssh/**",
+        "~/.aws/credentials",
+        "~/.codex/auth.json",
+        "~/.claude/.credentials.json"
+      ],
+      "why_read_paths": "A file-read boundary, not a command boundary. Claude Code renders these as Read() rules and OpenCode as permission.read entries. Codex has no file-read matcher, so it gets nothing from this rule, which is why its commands array is empty."
     }
   ]
 }

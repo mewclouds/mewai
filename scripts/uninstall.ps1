@@ -11,7 +11,7 @@
 
     - It reports what it would do and changes nothing unless you pass -Confirm.
     - It only removes paths listed in build/manifest.json, plus skill directories
-      under the two skill roots. It never touches credentials, sessions, history,
+      under the three skill roots. It never touches credentials, sessions, history,
       caches, or runtime databases.
 
     Everything removed is copied to ~/.mewai/backups/<timestamp>/ first.

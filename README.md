@@ -2,11 +2,11 @@
 
 This is my workflow for AI-assisted development: one source of truth for agent instructions, command boundaries, and skills, rendered into every provider I use.
 
-Today that's Claude Code, Codex, and Antigravity CLI (`agy`). When I pick up a fourth, I write one adapter in the renderer instead of maintaining a fourth copy of my rules.
+Today that's Claude Code, Codex, Antigravity CLI (`agy`), and OpenCode. When I pick up another, I write one adapter in the renderer instead of maintaining another copy of my rules.
 
 ## Why I built this
 
-My config kept drifting because the same content lived in several places and nothing compared them. I'd copy a skill into `~/.claude/skills` and `~/.agents/skills`, they'd stay in sync for a while, then I'd edit one and forget the other. Nothing told me.
+My config kept drifting because the same content lived in several places and nothing compared them. I'd copy a skill into `~/.claude/skills` and `~/.agents/skills`, they'd stay in sync for a while, then I'd edit one and forget the other. Nothing told me, and I'm a tinkerer, I love experimenting with different models/options.
 
 mewai fixes that three ways:
 
@@ -72,15 +72,15 @@ That's a dry run. I add `--confirm` to actually remove them. Everything removed 
 
 ## What lives where
 
-| Path | Holds |
-| --- | --- |
-| `core/instructions/` | Behavior rules, authored as modules and concatenated per provider |
+| Path                      | Holds                                                                |
+| ------------------------- | -------------------------------------------------------------------- |
+| `core/instructions/`      | Behavior rules, authored as modules and concatenated per provider    |
 | `core/policy/policy.json` | Command boundaries, rendered to every provider that can enforce them |
-| `core/providers/` | Provider config that isn't derived from anything else |
-| `core/skills/` | Reusable workflows, provider-neutral |
-| `build/` | Generated. Committed on purpose. Never edit by hand |
-| `scripts/` | render, validate, install, status, reverse, uninstall |
-| `docs/` | Reference, loaded only when I link or request it |
+| `core/providers/`         | Provider config that isn't derived from anything else                |
+| `core/skills/`            | Reusable workflows, provider-neutral                                 |
+| `build/`                  | Generated. Committed on purpose. Never edit by hand                  |
+| `scripts/`                | render, validate, install, status, reverse, uninstall                |
+| `docs/`                   | Reference, loaded only when I link or request it                     |
 
 `docs/AUTHORING.md` covers how I add a rule or a skill without bloating what the agent loads every session. `docs/PROVIDERS.md` covers what each provider reads and where they differ.
 

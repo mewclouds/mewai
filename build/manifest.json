@@ -39,6 +39,18 @@
       "sha256": "95de257f2319e92714a3bc21fcdb28aa1900887e18be68c3461ab2008ef50fff"
     },
     {
+      "build": "build/opencode/AGENTS.md",
+      "install": "~/.config/opencode/AGENTS.md",
+      "action": "copy",
+      "sources": [
+        "core/instructions/base.md",
+        "core/instructions/autonomy.md",
+        "core/instructions/explainability.md",
+        "core/instructions/providers/opencode.md"
+      ],
+      "sha256": "2d05011f9aaff8bbcf40775d4475f8f6aef0abd55ee1583a47354813f1489586"
+    },
+    {
       "build": "build/claude/settings.json",
       "install": "~/.claude/settings.json",
       "action": "copy",
@@ -46,7 +58,7 @@
         "core/providers/claude/settings.json",
         "core/policy/policy.json"
       ],
-      "sha256": "f8714c4b4854715cb55557ff14edebfe56bbb94d5d3143233db5c5277b76a84f"
+      "sha256": "6ad1461c8e9ac5a77b86c289fce4c43e7f1bf6d5ff42572ac83c5de21fd415b7"
     },
     {
       "build": "build/codex/rules/default.rules",
@@ -74,6 +86,16 @@
         "core/providers/claude/statusline-command.sh"
       ],
       "sha256": "7897215768dd0c7794e12dd408b9a292e2e1d728d9c0ef8c387f72e40da8279e"
+    },
+    {
+      "build": "build/opencode/opencode.jsonc",
+      "install": "~/.config/opencode/opencode.jsonc",
+      "action": "copy",
+      "sources": [
+        "core/providers/opencode/opencode.json",
+        "core/policy/policy.json"
+      ],
+      "sha256": "a8893e84753da3203b32eb5740eabe373f086bbc07bd184c0969c7033d9ce8d9"
     },
     {
       "build": "build/claude/skills/code-review/SKILL.md",

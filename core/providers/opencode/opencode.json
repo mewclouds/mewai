@@ -1,0 +1,19 @@
+{
+  "_comment": "Base OpenCode settings owned by mewai. The permission block is generated from core/policy/policy.json by scripts/render.ps1 and must not be set here. Everything else is yours to edit.",
+  "$schema": "https://opencode.ai/config.json",
+  "autoupdate": true,
+  "provider": {
+    "openrouter": {
+      "models": {
+        "z-ai/glm-5.3-flash": {
+          "options": {
+            "provider": {
+              "order": ["z-ai", "novita"],
+              "allow_fallbacks": false
+            }
+          }
+        }
+      }
+    }
+  }
+}

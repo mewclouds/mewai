@@ -26,6 +26,7 @@ $LineBudgets = @{
     'providers/claude.md'        = 60
     'providers/codex.md'         = 60
     'providers/antigravity.md'   = 60
+    'providers/opencode.md'      = 60
 }
 $RenderedLineBudget = 400
 
@@ -232,6 +233,7 @@ foreach ($skill in $skills) {
 
 # --- policy ------------------------------------------------------------------
 
+$policy = $null
 $policyPath = Join-Path $RepoRoot 'core/policy/policy.json'
 if (-not (Test-Path $policyPath)) {
     Add-Failure 'core/policy/policy.json is missing'
@@ -392,6 +394,171 @@ else {
         if ($case.ContainsKey('Reject') -and $decision -eq $case.Reject) {
             Add-Failure "$($case.Name): decision must not be '$($case.Reject)'"
         }
+    }
+}
+
+# --- opencode permissions ----------------------------------------------------
+# OpenCode resolves a command by taking the last pattern that matches it, so tier
+# order in the emitted object is the decision. A stricter rule written above a
+# looser one is inert, and nothing about reading a 200 key object reveals that.
+
+$bashRules = @()
+$openCodePath = Join-Path $RepoRoot 'build/opencode/opencode.jsonc'
+if (-not (Test-Path $openCodePath)) {
+    Add-Failure 'build/opencode/opencode.jsonc is missing. Run scripts/render.ps1.'
+}
+else {
+    $openCodeRaw = (Get-Content -Path $openCodePath -Raw) -replace "`r`n", "`n"
+
+    # -AsHashtable because command patterns are case sensitive strings and JSON
+    # permits keys that differ only in casing. The default parser rejects the whole
+    # file in that case, with a message about its own switch rather than the rule.
+    try {
+        $null = $openCodeRaw | ConvertFrom-Json -AsHashtable
+        $openCode = $true
+    }
+    catch {
+        Add-Failure "build/opencode/opencode.jsonc is not valid JSON: $_"
+        $openCode = $false
+    }
+
+    if ($openCode) {
+        # Read the patterns from the text rather than a parsed object, because both
+        # their order and their exact casing are load bearing and a hashtable
+        # preserves neither reliably.
+        $bashBlock = [regex]::Match($openCodeRaw, '(?s)"bash":\s*\{(.*?)\n    \}')
+        $bashRules = [regex]::Matches($bashBlock.Groups[1].Value, '"((?:[^"\\]|\\.)*)":\s*"(allow|ask|deny)"') |
+            ForEach-Object { [pscustomobject]@{ Pattern = $_.Groups[1].Value; Action = $_.Groups[2].Value } }
+
+        if ($bashRules.Count -eq 0) {
+            Add-Failure 'opencode: permission.bash has no patterns'
+        }
+
+        # Everything that is not generated must survive rendering byte for byte.
+        # A serializer that quietly flattens a nested array into a string produces a
+        # file that still parses, still installs, and routes to the wrong place.
+        $openCodeSource = Join-Path $RepoRoot 'core/providers/opencode/opencode.json'
+        if (Test-Path $openCodeSource) {
+            $sourceJson = Get-Content -Path $openCodeSource -Raw | ConvertFrom-Json -AsHashtable
+            $renderedJson = $openCodeRaw | ConvertFrom-Json -AsHashtable
+
+            foreach ($key in @($sourceJson.Keys | Where-Object { -not $_.StartsWith('_') })) {
+                $expected = $sourceJson[$key] | ConvertTo-Json -Depth 32 -Compress
+                $actual = if ($renderedJson.ContainsKey($key)) {
+                    $renderedJson[$key] | ConvertTo-Json -Depth 32 -Compress
+                } else { '<missing>' }
+
+                if ($expected -ne $actual) {
+                    Add-Failure "opencode: base setting '$key' did not survive rendering. source $expected, rendered $actual"
+                }
+            }
+        }
+
+        $rank = @{ allow = 0; ask = 1; deny = 2 }
+        $highest = -1
+
+        foreach ($entry in $bashRules) {
+            if ($rank[$entry.Action] -lt $highest) {
+                Add-Failure ("opencode: permission.bash pattern '{0}' is '{1}' but sits below a stricter tier. Last match wins, so the stricter rule never fires. Emit allow, then ask, then deny." -f $entry.Pattern, $entry.Action)
+                break
+            }
+            $highest = $rank[$entry.Action]
+        }
+
+        # Codex drops a rule with no commands on purpose. OpenCode should never drop
+        # one, so a forbid that renders to nothing is a regression rather than a
+        # documented gap.
+        if ($policy) {
+            $denied = @($bashRules | Where-Object { $_.Action -eq 'deny' } |
+                ForEach-Object { $_.Pattern })
+
+            foreach ($rule in @($policy.rules | Where-Object { $_.decision -eq 'forbid' })) {
+                foreach ($command in $rule.commands) {
+                    if ($denied -notcontains $command) {
+                        Add-Failure "opencode: forbid command '$command' from rule '$($rule.id)' rendered no deny pattern"
+                    }
+                }
+            }
+
+            # Every raw pattern must survive rendering with its exact spelling. Two
+            # patterns differing only in casing collapse into one under a case
+            # insensitive key comparer, which halves coverage without failing
+            # anything. -Recurse and -recurse did exactly that.
+            $emitted = @($bashRules | ForEach-Object { $_.Pattern })
+            foreach ($rule in $policy.rules) {
+                if ($rule.PSObject.Properties.Name -notcontains 'opencode_rules') { continue }
+                foreach ($raw in $rule.opencode_rules) {
+                    if ($emitted -cnotcontains $raw) {
+                        Add-Failure "opencode: pattern '$raw' from rule '$($rule.id)' is missing from permission.bash"
+                    }
+                }
+            }
+        }
+    }
+}
+
+# The checks above read the rendered text. These prove OpenCode itself accepts it,
+# by pointing OPENCODE_CONFIG at the build file so the config resolver runs against
+# it before it is installed anywhere. This is the OpenCode analogue of the codex
+# execpolicy assertions, and it needs a working opencode binary the same way.
+
+$openCodeCommand = Get-Command opencode -ErrorAction SilentlyContinue
+$openCodeWorks = $false
+if ($openCodeCommand) {
+    try {
+        & opencode --version *>$null
+        $openCodeWorks = ($LASTEXITCODE -eq 0)
+    }
+    catch {
+        $openCodeWorks = $false
+    }
+}
+
+if (-not (Test-Path $openCodePath)) {
+    # Already reported as missing above.
+}
+elseif (-not $openCodeWorks) {
+    $reason = if ($openCodeCommand) {
+        "opencode is on PATH at $($openCodeCommand.Source) but does not run"
+    }
+    else {
+        'opencode is not on PATH'
+    }
+    $script:Skipped.Add("opencode config assertions: $reason")
+}
+else {
+    $previousConfig = $env:OPENCODE_CONFIG
+    $env:OPENCODE_CONFIG = $openCodePath
+    try {
+        $resolvedRaw = & opencode debug config 2>&1 | Out-String
+
+        if ($LASTEXITCODE -ne 0) {
+            Add-Failure "opencode rejected the rendered config: $resolvedRaw"
+        }
+        else {
+            $resolved = $resolvedRaw | ConvertFrom-Json -AsHashtable
+
+            if (-not $resolved.permission) {
+                Add-Failure 'opencode resolved the rendered config but found no permission block. The file loaded and the rules did not.'
+            }
+            else {
+                # Counting per tier catches a pattern that OpenCode's parser dropped
+                # or collapsed, which is the failure that leaves a boundary looking
+                # configured while never firing.
+                foreach ($tier in @('allow', 'ask', 'deny')) {
+                    $rendered = @($bashRules | Where-Object { $_.Action -eq $tier }).Count
+                    $loaded = @($resolved.permission.bash.GetEnumerator() |
+                        Where-Object { $_.Value -eq $tier }).Count
+
+                    if ($rendered -ne $loaded) {
+                        Add-Failure "opencode loaded $loaded '$tier' bash pattern(s) from a file that renders $rendered"
+                    }
+                }
+            }
+        }
+    }
+    finally {
+        $env:OPENCODE_CONFIG = $previousConfig
     }
 }
 
