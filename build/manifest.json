@@ -292,6 +292,33 @@
       "sha256": "b663e0b7a468273d58381f0ee9530a18246ac8b0393e62f74eaf110800acdfd3"
     },
     {
+      "build": "build/claude/skills/reply-draft/SKILL.md",
+      "install": "~/.claude/skills/reply-draft/SKILL.md",
+      "action": "copy",
+      "sources": [
+        "core/skills/reply-draft/SKILL.md"
+      ],
+      "sha256": "039b5d0ba7fd7477b31107e88f37221eaa91c731eb90ee75dd3ed8c649d8fcae"
+    },
+    {
+      "build": "build/codex/skills/reply-draft/SKILL.md",
+      "install": "~/.agents/skills/reply-draft/SKILL.md",
+      "action": "copy",
+      "sources": [
+        "core/skills/reply-draft/SKILL.md"
+      ],
+      "sha256": "039b5d0ba7fd7477b31107e88f37221eaa91c731eb90ee75dd3ed8c649d8fcae"
+    },
+    {
+      "build": "build/antigravity/skills/reply-draft/SKILL.md",
+      "install": "~/.gemini/skills/reply-draft/SKILL.md",
+      "action": "copy",
+      "sources": [
+        "core/skills/reply-draft/SKILL.md"
+      ],
+      "sha256": "039b5d0ba7fd7477b31107e88f37221eaa91c731eb90ee75dd3ed8c649d8fcae"
+    },
+    {
       "build": "build/claude/skills/rule-tender/SKILL.md",
       "install": "~/.claude/skills/rule-tender/SKILL.md",
       "action": "copy",
