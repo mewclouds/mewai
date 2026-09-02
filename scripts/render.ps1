@@ -58,6 +58,14 @@ $Providers = @(
         InstructionInstall = '~/.config/opencode/AGENTS.md'
         ProviderModule     = 'providers/opencode.md'
         SkillsInstallRoot  = $null
+    },
+    @{
+        Name                    = 'cursor'
+        InstructionFile         = 'mewai.mdc'
+        InstructionInstall      = '~/.cursor/rules/mewai.mdc'
+        ProviderModule          = 'providers/cursor.md'
+        SkillsInstallRoot       = $null
+        InstructionFrontMatter  = "---`nalwaysApply: true`n---"
     }
 )
 
@@ -368,6 +376,74 @@ function New-CodexRules {
     ($lines -join "`n") + "`n"
 }
 
+function New-CursorRules {
+    <#
+        Emits the rule table the Cursor hook script matches against.
+
+        Cursor hook `ask` is a no-op in Run Everything, so confirm is written as
+        deny and the script tells the agent to hand the user the exact command.
+        Forbid is deny without that handoff. Allow is omitted: unlisted commands
+        fall through to Run Everything.
+
+        Token phrases come from policy commands. Globs reuse opencode_rules,
+        which are already unwrapped command strings that close the flag-position
+        and PowerShell-delete gaps prefix matching cannot.
+    #>
+    param([object]$Policy)
+
+    $shell = [System.Collections.Generic.List[object]]::new()
+    $read = [System.Collections.Generic.List[object]]::new()
+
+    foreach ($tier in @('forbid', 'confirm')) {
+        foreach ($rule in $Policy.rules) {
+            if ($rule.decision -ne $tier) { continue }
+
+            $tokens = [System.Collections.Generic.List[string]]::new()
+            foreach ($command in @($rule.commands)) {
+                if (-not [string]::IsNullOrWhiteSpace($command)) {
+                    $tokens.Add($command)
+                }
+            }
+
+            $globs = [System.Collections.Generic.List[string]]::new()
+            if ($rule.PSObject.Properties.Name -contains 'opencode_rules') {
+                foreach ($glob in @($rule.opencode_rules)) {
+                    $globs.Add([string]$glob)
+                }
+            }
+
+            if ($tokens.Count -gt 0 -or $globs.Count -gt 0) {
+                $shell.Add([ordered]@{
+                    id     = $rule.id
+                    tier   = $tier
+                    why    = $rule.why
+                    tokens = @($tokens)
+                    globs  = @($globs)
+                })
+            }
+
+            if ($rule.PSObject.Properties.Name -contains 'read_paths') {
+                $patterns = [System.Collections.Generic.List[string]]::new()
+                foreach ($path in @($rule.read_paths)) {
+                    $patterns.Add(($path -replace '^\./', ''))
+                }
+                $read.Add([ordered]@{
+                    id       = $rule.id
+                    tier     = $tier
+                    why      = $rule.why
+                    patterns = @($patterns)
+                })
+            }
+        }
+    }
+
+    $payload = [ordered]@{
+        shell = @($shell)
+        read  = @($read)
+    }
+    ($payload | ConvertTo-Json -Depth 32 -WarningAction Stop) + "`n"
+}
+
 function New-InstructionFile {
     param([hashtable]$Provider)
 
@@ -392,7 +468,11 @@ $manifestEntries = [System.Collections.Generic.List[object]]::new()
 
 foreach ($provider in $Providers) {
     $target = Join-Path (Join-Path $BuildDir $provider.Name) $provider.InstructionFile
-    Write-RenderedFile -Path $target -Content (New-InstructionFile -Provider $provider)
+    $instruction = New-InstructionFile -Provider $provider
+    if ($provider.ContainsKey('InstructionFrontMatter')) {
+        $instruction = $provider.InstructionFrontMatter.TrimEnd() + "`n`n" + $instruction
+    }
+    Write-RenderedFile -Path $target -Content $instruction
 
     $sources = @($SharedModules) + @($provider.ProviderModule) |
         ForEach-Object { "core/instructions/$_" }
@@ -438,6 +518,24 @@ $configTargets = @(
         Install = '~/.config/opencode/opencode.jsonc'
         Content = New-OpenCodeSettings -Policy $policy
         Sources = @('core/providers/opencode/opencode.json', 'core/policy/policy.json')
+    },
+    @{
+        Build   = 'build/cursor/hooks.json'
+        Install = '~/.cursor/hooks.json'
+        Content = (Get-Content -Path (Join-Path $CoreDir 'providers/cursor/hooks.json') -Raw)
+        Sources = @('core/providers/cursor/hooks.json')
+    },
+    @{
+        Build   = 'build/cursor/hooks/mewai-policy.ps1'
+        Install = '~/.cursor/hooks/mewai-policy.ps1'
+        Content = (Get-Content -Path (Join-Path $CoreDir 'providers/cursor/mewai-policy.ps1') -Raw)
+        Sources = @('core/providers/cursor/mewai-policy.ps1')
+    },
+    @{
+        Build   = 'build/cursor/hooks/rules.json'
+        Install = '~/.cursor/hooks/rules.json'
+        Content = New-CursorRules -Policy $policy
+        Sources = @('core/policy/policy.json')
     }
 )
 

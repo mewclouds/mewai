@@ -51,6 +51,18 @@
       "sha256": "2d05011f9aaff8bbcf40775d4475f8f6aef0abd55ee1583a47354813f1489586"
     },
     {
+      "build": "build/cursor/mewai.mdc",
+      "install": "~/.cursor/rules/mewai.mdc",
+      "action": "copy",
+      "sources": [
+        "core/instructions/base.md",
+        "core/instructions/autonomy.md",
+        "core/instructions/explainability.md",
+        "core/instructions/providers/cursor.md"
+      ],
+      "sha256": "0ff8953285cf4ccf443d8aad8113efefed248c792690b1bdd13d2ac4fbd87a0f"
+    },
+    {
       "build": "build/claude/settings.json",
       "install": "~/.claude/settings.json",
       "action": "copy",
@@ -96,6 +108,33 @@
         "core/policy/policy.json"
       ],
       "sha256": "a8893e84753da3203b32eb5740eabe373f086bbc07bd184c0969c7033d9ce8d9"
+    },
+    {
+      "build": "build/cursor/hooks.json",
+      "install": "~/.cursor/hooks.json",
+      "action": "copy",
+      "sources": [
+        "core/providers/cursor/hooks.json"
+      ],
+      "sha256": "ae2185cc99245dd0787591ccdd95a0a96b0d28b38037bc7db885adf59770882b"
+    },
+    {
+      "build": "build/cursor/hooks/mewai-policy.ps1",
+      "install": "~/.cursor/hooks/mewai-policy.ps1",
+      "action": "copy",
+      "sources": [
+        "core/providers/cursor/mewai-policy.ps1"
+      ],
+      "sha256": "7cd333dda2a94e6689f84c794f784e2d19ad1ed213a2ee14b44c2c5aeb5b00e9"
+    },
+    {
+      "build": "build/cursor/hooks/rules.json",
+      "install": "~/.cursor/hooks/rules.json",
+      "action": "copy",
+      "sources": [
+        "core/policy/policy.json"
+      ],
+      "sha256": "f2753712397c994d386d349db26efa342007c5f4f37e6055fcbc7506bec77c69"
     },
     {
       "build": "build/claude/skills/code-review/SKILL.md",

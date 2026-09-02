@@ -4,19 +4,20 @@ What each provider loads, where mewai puts it, and where they genuinely differ.
 
 ## Rendered targets
 
-| Source | Claude Code | Codex | Antigravity | OpenCode |
-| --- | --- | --- | --- | --- |
-| `core/instructions/*` | `~/.claude/CLAUDE.md` | `~/.codex/AGENTS.md` | `~/.gemini/GEMINI.md` | `~/.config/opencode/AGENTS.md` |
-| `core/policy/policy.json` | `~/.claude/settings.json` (permissions) | `~/.codex/rules/default.rules` | not applicable | `~/.config/opencode/opencode.jsonc` (permission) |
-| `core/providers/claude/settings.json` | `~/.claude/settings.json` (everything else) | not applicable | not applicable | not applicable |
-| `core/providers/claude/statusline-command.sh` | `~/.claude/statusline-command.sh` | not applicable | not applicable | not applicable |
-| `core/providers/codex/config.toml` | not applicable | `~/.codex/config.toml` | not applicable | not applicable |
-| `core/providers/opencode/opencode.json` | not applicable | not applicable | not applicable | `~/.config/opencode/opencode.jsonc` (everything else) |
-| `core/skills/<name>/SKILL.md` | `~/.claude/skills/<name>/SKILL.md` | `~/.agents/skills/<name>/SKILL.md` | `~/.gemini/skills/<name>/SKILL.md` | already covered by `~/.agents/skills/` |
+| Source | Claude Code | Codex | Antigravity | OpenCode | Cursor |
+| --- | --- | --- | --- | --- | --- |
+| `core/instructions/*` | `~/.claude/CLAUDE.md` | `~/.codex/AGENTS.md` | `~/.gemini/GEMINI.md` | `~/.config/opencode/AGENTS.md` | `~/.cursor/rules/mewai.mdc` |
+| `core/policy/policy.json` | `~/.claude/settings.json` (permissions) | `~/.codex/rules/default.rules` | not applicable | `~/.config/opencode/opencode.jsonc` (permission) | `~/.cursor/hooks.json` plus `~/.cursor/hooks/` |
+| `core/providers/claude/settings.json` | `~/.claude/settings.json` (everything else) | not applicable | not applicable | not applicable | not applicable |
+| `core/providers/claude/statusline-command.sh` | `~/.claude/statusline-command.sh` | not applicable | not applicable | not applicable | not applicable |
+| `core/providers/codex/config.toml` | not applicable | `~/.codex/config.toml` | not applicable | not applicable | not applicable |
+| `core/providers/opencode/opencode.json` | not applicable | not applicable | not applicable | `~/.config/opencode/opencode.jsonc` (everything else) | not applicable |
+| `core/providers/cursor/hooks.json` | not applicable | not applicable | not applicable | not applicable | `~/.cursor/hooks.json` |
+| `core/skills/<name>/SKILL.md` | `~/.claude/skills/<name>/SKILL.md` | `~/.agents/skills/<name>/SKILL.md` | `~/.gemini/skills/<name>/SKILL.md` | already covered by `~/.agents/skills/` | already covered by `~/.agents/skills/` |
 
 Antigravity gets instructions and skills, nothing else. `policy.json` is not applicable there. See "Antigravity does not get rendered permissions" below for why.
 
-OpenCode gets instructions and permissions but no skill copy of its own, because it already scans `~/.agents/skills/`, which the Codex row installs. Rendering a fourth copy would create the exact duplication this repository exists to remove.
+OpenCode and Cursor get no skill copy of their own, because they already scan `~/.agents/skills/`, which the Codex row installs. Rendering another copy would create the exact duplication this repository exists to remove.
 
 Skills are byte-identical across all three locations. That is the whole point: they were maintained as separate files before, and one drifted.
 
@@ -25,17 +26,18 @@ Skills are byte-identical across all three locations. That is the whole point: t
 - Claude Code: `/code-review`
 - Codex: `$code-review`
 - Antigravity: `/code-review`
+- Cursor: `/code-review`
 - OpenCode: no sigil. The agent loads a skill through its built-in `skill` tool.
 
 Codex also selects skills automatically from their descriptions. Claude Code selects from descriptions too, which is why every skill description states when to use it. A description without a trigger fails validation. OpenCode has nothing but the description to go on, so that check matters most there.
 
 ## How the three decisions map
 
-| policy.json | Claude Code | Codex | OpenCode |
-| --- | --- | --- | --- |
-| `allow` | `permissions.allow` | `prefix_rule(decision="allow")` | `"allow"` |
-| `confirm` | `permissions.ask` | no rule, falls through to the approval flow | `"ask"` |
-| `forbid` | `permissions.deny` | `prefix_rule(decision="forbidden")` | `"deny"` |
+| policy.json | Claude Code | Codex | OpenCode | Cursor |
+| --- | --- | --- | --- | --- |
+| `allow` | `permissions.allow` | `prefix_rule(decision="allow")` | `"allow"` | no hook, `Run Everything` default |
+| `confirm` | `permissions.ask` | no rule, falls through to the approval flow | `"ask"` | hook `deny`, agent hands the user the command |
+| `forbid` | `permissions.deny` | `prefix_rule(decision="forbidden")` | `"deny"` | hook `deny`, no handoff |
 
 Antigravity has no row here. It does not render any of the three decisions.
 
@@ -48,6 +50,24 @@ OpenCode is the only provider besides Claude Code that expresses all three, so `
 ### confirm has no direct Codex equivalent
 
 Codex `execpolicy` expresses `allow` and `forbidden`. There is no prompt-level decision, so a `confirm` rule emits nothing and the command falls through to Codex's own approval flow. That is the intended behavior rather than a missing feature, but it does mean the guarantee is weaker: Claude Code will always prompt, Codex will prompt according to its own `approval_policy`.
+
+### Cursor maps confirm to deny
+
+Cursor hooks document `allow`, `deny`, and `ask`. `ask` is a known no-op in `Run Everything`, which is the autonomy mode mewai targets, so a `confirm` rule that emitted `ask` would just run. mewai therefore renders confirm as deny and tells the agent to give the user the exact command. Forbid is also deny, with a stop message that does not hand the command over.
+
+The hook is the hard stop. `failClosed` is set so a crashed or missing matcher blocks rather than fails open. Unlisted commands are allowed, because `Run Everything` is permissive by default with explicit exceptions.
+
+Cursor has no `Bash()` / `PowerShell()` split. The matcher searches for the command tokens anywhere in the string, so a wrapper such as `rtk git push --force` is caught. Flag-at-fifth-word cases reuse `opencode_rules` as globs against the full command string, because those globs are already unwrapped.
+
+`permissions.json` `autoRun` is steering for Auto-review, not a boundary. mewai does not render it.
+
+User-level instructions install to `~/.cursor/rules/mewai.mdc` with `alwaysApply: true`. Settings User Rules are account-synced and not a file the installer can copy. `~/.cursor/rules` is documented as machine-local.
+
+mewai owns `~/.cursor/hooks.json`. Other user hooks in that file are overwritten on install, the same way Claude Code settings are.
+
+Cloud Agents do not load `~/.cursor/` user hooks or user skills. They only see project files in the repository.
+
+Cursor also scans `~/.claude/skills/` in addition to `~/.agents/skills/`. Same duplication OpenCode already accepted. Do not install a third copy under `~/.cursor/skills/`.
 
 ### Flag position
 
@@ -126,7 +146,7 @@ The same applies to `~/.claude/settings.json` when options change from the Claud
 
 `~/.gemini/antigravity-cli/settings.json` is not managed by mewai at all, for the reasons in "Antigravity does not get rendered permissions" above. Its `toolPermission`, `trustedWorkspaces`, `model`, and every other field are entirely yours to set, and mewai will not overwrite or report drift on any of it. `status` never lists this file, because it is no longer in the manifest.
 
-Nothing else in `~/.codex`, `~/.claude`, `~/.gemini`, or `~/.config/opencode` is managed either. Credentials, sessions, history, caches, plugin state, and SQLite databases are never read or written.
+Nothing else in `~/.codex`, `~/.claude`, `~/.gemini`, `~/.config/opencode`, or `~/.cursor` is managed either. Credentials, sessions, history, caches, plugin state, and SQLite databases are never read or written.
 
 ## Verification
 
@@ -163,3 +183,15 @@ Skill discovery is verifiable offline with `opencode debug skill`, which lists e
 Instruction pickup has no debug command. Confirm it by asking OpenCode which provider notes it is running under. Getting the Claude Code ones back means `~/.config/opencode/AGENTS.md` did not install and it fell back to `~/.claude/CLAUDE.md`.
 
 Config is read once at startup and is not hot reloaded, so restart OpenCode after any install before testing.
+
+Cursor hook matching is checked offline in `validate.ps1` by piping JSON into the rendered `mewai-policy.ps1`. Those assertions always run. They prove the matcher decides. They do not prove Cursor loaded `hooks.json`. Confirm that in the IDE:
+
+| Action in chat | Expected |
+| --- | --- |
+| `run git status` | runs |
+| `run gh pr create --title test` | blocked, agent gives you the command |
+| `run git push --force` | blocked, no handoff |
+| `run rtk git push --force` | blocked, the wrapper cannot launder it |
+| `read ~/.ssh/config` | blocked |
+
+Cursor watches `hooks.json` and reloads on save. If a hook still does not fire, restart Cursor. Check Customize > Hooks, and the Hooks output channel. Daily use is `Run Everything` under Settings > Agents > Approvals & Execution. Auto-review is not the enforcement path.

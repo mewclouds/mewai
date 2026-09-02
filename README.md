@@ -2,7 +2,7 @@
 
 This is my workflow for AI-assisted development: one source of truth for agent instructions, command boundaries, and skills, rendered into every provider I use.
 
-Today that's Claude Code, Codex, Antigravity CLI (`agy`), and OpenCode. When I pick up another, I write one adapter in the renderer instead of maintaining another copy of my rules.
+Today that's Claude Code, Codex, Antigravity CLI (`agy`), OpenCode, and Cursor. When I pick up another, I write one adapter in the renderer instead of maintaining another copy of my rules.
 
 ## Why I built this
 

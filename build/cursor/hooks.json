@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeShellExecution": [
+      {
+        "command": "pwsh -NoProfile -File ./hooks/mewai-policy.ps1",
+        "failClosed": true
+      }
+    ],
+    "beforeReadFile": [
+      {
+        "command": "pwsh -NoProfile -File ./hooks/mewai-policy.ps1",
+        "failClosed": true
+      }
+    ]
+  }
+}

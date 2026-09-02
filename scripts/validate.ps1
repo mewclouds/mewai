@@ -27,6 +27,7 @@ $LineBudgets = @{
     'providers/codex.md'         = 60
     'providers/antigravity.md'   = 60
     'providers/opencode.md'      = 60
+    'providers/cursor.md'        = 60
 }
 $RenderedLineBudget = 400
 
@@ -559,6 +560,103 @@ else {
     }
     finally {
         $env:OPENCODE_CONFIG = $previousConfig
+    }
+}
+
+# --- cursor hooks ------------------------------------------------------------
+# These run the rendered matcher the same way Cursor will: JSON on stdin, JSON
+# on stdout. They do not need the Cursor binary. A matcher that cannot decide
+# is a failed check, not a skipped one.
+
+$cursorScript = Join-Path $RepoRoot 'build/cursor/hooks/mewai-policy.ps1'
+$cursorRulesPath = Join-Path $RepoRoot 'build/cursor/hooks/rules.json'
+$cursorHooksPath = Join-Path $RepoRoot 'build/cursor/hooks.json'
+
+if (-not (Test-Path $cursorScript) -or -not (Test-Path $cursorRulesPath) -or -not (Test-Path $cursorHooksPath)) {
+    Add-Failure 'build/cursor hook files are missing. Run scripts/render.ps1.'
+}
+else {
+    $hooksRaw = (Get-Content -Path $cursorHooksPath -Raw) -replace "`r`n", "`n"
+    $failClosedCount = ([regex]::Matches($hooksRaw, '"failClosed"\s*:\s*true')).Count
+    if ($failClosedCount -lt 2) {
+        Add-Failure 'cursor: hooks.json must set failClosed true on both policy hooks so a broken matcher blocks'
+    }
+
+    if ($policy) {
+        $cursorRules = Get-Content -Path $cursorRulesPath -Raw | ConvertFrom-Json
+        $shellIds = @($cursorRules.shell | ForEach-Object { $_.id })
+
+        foreach ($rule in @($policy.rules | Where-Object { $_.decision -in @('forbid', 'confirm') })) {
+            if (@($rule.commands).Count -eq 0) { continue }
+            if ($shellIds -notcontains $rule.id) {
+                Add-Failure "cursor: rule '$($rule.id)' rendered no shell matcher"
+            }
+        }
+
+        foreach ($rule in $policy.rules) {
+            if ($rule.PSObject.Properties.Name -notcontains 'opencode_rules') { continue }
+            $row = @($cursorRules.shell | Where-Object { $_.id -eq $rule.id }) | Select-Object -First 1
+            if (-not $row) {
+                Add-Failure "cursor: opencode_rules from '$($rule.id)' rendered no shell row"
+                continue
+            }
+            $emitted = @($row.globs)
+            foreach ($rawPattern in $rule.opencode_rules) {
+                if ($emitted -cnotcontains $rawPattern) {
+                    Add-Failure "cursor: glob '$rawPattern' from rule '$($rule.id)' is missing from rules.json"
+                }
+            }
+        }
+    }
+
+    $sshPath = Join-Path $(if ($env:HOME) { $env:HOME } else { $env:USERPROFILE }) '.ssh/config'
+    $cases = @(
+        @{ Name = 'read-only inspection is allowed'; Payload = '{"command":"git status"}'; Expect = 'allow' }
+        @{
+            Name          = 'confirm-tier pr create is denied with a handoff'
+            Payload       = '{"command":"gh pr create --title test"}'
+            Expect        = 'deny'
+            AgentContains = 'Give the user this exact command'
+        }
+        @{
+            Name             = 'forbid-tier force push is denied without a handoff'
+            Payload          = '{"command":"git push --force"}'
+            Expect           = 'deny'
+            AgentNotContains = 'Give the user this exact command'
+        }
+        @{ Name = 'a wrapper cannot launder a forbidden command'; Payload = '{"command":"rtk git push --force"}'; Expect = 'deny' }
+        @{ Name = 'force flag in fifth position is denied'; Payload = '{"command":"git push origin main --force"}'; Expect = 'deny' }
+        @{
+            Name    = 'secret file read is denied'
+            Payload = (@{ file_path = $sshPath } | ConvertTo-Json -Compress)
+            Expect  = 'deny'
+        }
+    )
+
+    foreach ($case in $cases) {
+        $result = $case.Payload | & pwsh -NoProfile -File $cursorScript
+        if ($LASTEXITCODE -ne 0) {
+            Add-Failure "cursor hook could not evaluate '$($case.Name)': $result"
+            continue
+        }
+
+        try {
+            $decision = ($result | Out-String).Trim() | ConvertFrom-Json
+        }
+        catch {
+            Add-Failure "cursor hook '$($case.Name)' did not return JSON: $result"
+            continue
+        }
+
+        if ($decision.permission -ne $case.Expect) {
+            Add-Failure "$($case.Name): expected '$($case.Expect)', got '$($decision.permission)'"
+        }
+        if ($case.ContainsKey('AgentContains') -and $decision.agent_message -notlike "*$($case.AgentContains)*") {
+            Add-Failure "$($case.Name): agent_message missing '$($case.AgentContains)'"
+        }
+        if ($case.ContainsKey('AgentNotContains') -and $decision.agent_message -like "*$($case.AgentNotContains)*") {
+            Add-Failure "$($case.Name): agent_message must not contain '$($case.AgentNotContains)'"
+        }
     }
 }
 
