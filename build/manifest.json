@@ -125,7 +125,7 @@
       "sources": [
         "core/providers/cursor/mewai-policy.ps1"
       ],
-      "sha256": "7cd333dda2a94e6689f84c794f784e2d19ad1ed213a2ee14b44c2c5aeb5b00e9"
+      "sha256": "e9a0c73cde2223efbaf4517fef1729198da7c51fab70c8bb60eedd97609b9030"
     },
     {
       "build": "build/cursor/hooks/rules.json",

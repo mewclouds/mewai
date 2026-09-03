@@ -88,19 +88,71 @@ function Write-Decision {
     [Console]::Out.WriteLine(($payload | ConvertTo-Json -Compress -Depth 5))
 }
 
+function Test-CompleteJson {
+    param([string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return $false
+    }
+
+    try {
+        $null = ConvertFrom-Json -InputObject $Text
+        $true
+    }
+    catch {
+        $false
+    }
+}
+
 function Get-HookStdin {
     <#
-        One raw read, no EOF wait. ReadToEnd hangs when Cursor keeps stdin open.
-        A single 64KB read returns when the JSON arrives.
+        Cursor keeps stdin open, so ReadToEnd hangs.
+        A single Read is also wrong: Windows anonymous pipes often
+        return 4KB even when more JSON is already buffered, and
+        beforeReadFile includes the whole file in "content".
+        Keep reading until the bytes so far are valid JSON.
+        After the first byte, an idle timeout stops us from blocking
+        forever on a pipe that never sends EOF.
     #>
+    $maxBytes = 16MB
+    $idleTimeoutMs = 1000
+    $chunkBytes = 65536
+
     try {
         $stdin = [Console]::OpenStandardInput()
-        $buffer = [byte[]]::new(65536)
-        $read = $stdin.Read($buffer, 0, $buffer.Length)
-        if ($read -le 0) {
+        $ms = [System.IO.MemoryStream]::new()
+        $buffer = [byte[]]::new($chunkBytes)
+        $gotAny = $false
+
+        while ($ms.Length -lt $maxBytes) {
+            if (-not $gotAny) {
+                $read = $stdin.Read($buffer, 0, $buffer.Length)
+            }
+            else {
+                $async = $stdin.BeginRead($buffer, 0, $buffer.Length, $null, $null)
+                if (-not $async.AsyncWaitHandle.WaitOne($idleTimeoutMs)) {
+                    break
+                }
+                $read = $stdin.EndRead($async)
+            }
+
+            if ($read -le 0) {
+                break
+            }
+
+            $gotAny = $true
+            $ms.Write($buffer, 0, $read)
+            $text = [System.Text.Encoding]::UTF8.GetString($ms.ToArray()).Trim().Trim([char]0xFEFF)
+            if (Test-CompleteJson -Text $text) {
+                return $text
+            }
+        }
+
+        if ($ms.Length -le 0) {
             return ''
         }
-        return [System.Text.Encoding]::UTF8.GetString($buffer, 0, $read).Trim().Trim([char]0xFEFF)
+
+        return [System.Text.Encoding]::UTF8.GetString($ms.ToArray()).Trim().Trim([char]0xFEFF)
     }
     catch {
         return ''
@@ -120,7 +172,12 @@ if ([string]::IsNullOrWhiteSpace($raw)) {
     exit 0
 }
 
-$inputObject = $raw | ConvertFrom-Json
+try {
+    $inputObject = ConvertFrom-Json -InputObject $raw
+}
+catch {
+    throw "hook stdin JSON parse failed ($($raw.Length) chars): $($_.Exception.Message)"
+}
 $homeDir = if ($env:HOME) { $env:HOME } else { $env:USERPROFILE }
 
 $command = $null

@@ -631,6 +631,22 @@ else {
             Payload = (@{ file_path = $sshPath } | ConvertTo-Json -Compress)
             Expect  = 'deny'
         }
+        @{
+            Name    = 'beforeReadFile payload larger than one pipe chunk is allowed'
+            Payload = (@{
+                    file_path = (Join-Path $RepoRoot 'README.md')
+                    content   = ('x' * 80000)
+                } | ConvertTo-Json -Compress)
+            Expect  = 'allow'
+        }
+        @{
+            Name    = 'secret file read with a large content payload is still denied'
+            Payload = (@{
+                    file_path = $sshPath
+                    content   = ('x' * 80000)
+                } | ConvertTo-Json -Compress)
+            Expect  = 'deny'
+        }
     )
 
     foreach ($case in $cases) {
