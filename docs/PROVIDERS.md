@@ -36,7 +36,7 @@ Codex also selects skills automatically from their descriptions. Claude Code sel
 | policy.json | Claude Code | Codex | OpenCode | Cursor |
 | --- | --- | --- | --- | --- |
 | `allow` | `permissions.allow` | `prefix_rule(decision="allow")` | `"allow"` | no hook, `Run Everything` default |
-| `confirm` | `permissions.ask` | no rule, falls through to the approval flow | `"ask"` | hook `deny`, agent hands the user the command |
+| `confirm` | `permissions.ask` | no rule, falls through to the approval flow | `"ask"` | hook `deny` unless the rule sets `cursor: "omit"`, in which case it runs |
 | `forbid` | `permissions.deny` | `prefix_rule(decision="forbidden")` | `"deny"` | hook `deny`, no handoff |
 
 Antigravity has no row here. It does not render any of the three decisions.
@@ -53,7 +53,7 @@ Codex `execpolicy` expresses `allow` and `forbidden`. There is no prompt-level d
 
 ### Cursor maps confirm to deny
 
-Cursor hooks document `allow`, `deny`, and `ask`. `ask` is a known no-op in `Run Everything`, which is the autonomy mode mewai targets, so a `confirm` rule that emitted `ask` would just run. mewai therefore renders confirm as deny and tells the agent to give the user the exact command. Forbid is also deny, with a stop message that does not hand the command over.
+Cursor hooks document `allow`, `deny`, and `ask`. `ask` is a known no-op in `Run Everything`, which is the autonomy mode mewai targets, so a `confirm` rule that emitted `ask` would just run. mewai therefore renders confirm as deny and tells the agent to give the user the exact command, unless the rule sets `cursor: "omit"`. That field drops the rule from the hook so Cursor stays autonomous while Claude Code and OpenCode still prompt. Forbid is also deny, with a stop message that does not hand the command over. `cursor: "omit"` is illegal on forbid.
 
 The hook is the hard stop. `failClosed` is set so a crashed or missing matcher blocks rather than fails open. Unlisted commands are allowed, because `Run Everything` is permissive by default with explicit exceptions.
 
@@ -105,12 +105,7 @@ Claude Code and Codex pick the most specific rule. OpenCode takes the last patte
 
 Claude Code matches `Bash(...)` and `PowerShell(...)` separately, so mewai emits both for every command. OpenCode has a single `bash` tool whose shell is chosen by its own `shell` config key, so each command produces one pattern set instead of two.
 
-Almost every policy command is spelled the same in both shells, so this costs nothing for `git`, `gh`, `npm`, `rg`, and the rest. The exception is deletion: `rm -rf` is POSIX, and PowerShell reaches the same destruction through `Remove-Item` with a recurse switch, aliased as `rm`, `ri`, `rd`, and `del`. Those five are covered explicitly by `opencode_rules`, so the deny tier holds whichever shell you point it at.
-
-Two details of those patterns are worth knowing before editing them:
-
-- The switch is anchored with no space before it (`Remove-Item *-?ecurse*`, not `Remove-Item * -Recurse *`). The spaced form requires an argument between the command and the flag, so `Remove-Item -Recurse -Force ./x` walked straight through it. That was a live hole in the Claude rules too, now closed on both sides.
-- PowerShell accepts any casing for a switch and neither matcher documents how it compares. OpenCode's single-character wildcard covers `-Recurse` and `-recurse` in one pattern. Claude Code has no documented `?`, so it lists both spellings instead. Neither covers `-RECURSE` or the abbreviated `-r`, which no glob separates from a path containing `-r`.
+Almost every policy command is spelled the same in both shells, so this costs nothing for `git`, `gh`, `npm`, `rg`, and the rest. Recursive delete is not a policy rule. Agents may remove scratch directories they created.
 
 ### OpenCode approves anything the policy does not name
 
@@ -176,7 +171,7 @@ What that still does not prove is enforcement: that a `deny` pattern actually st
 | `opencode run "run rtk git push --force"` | blocked, the wrapper cannot launder it |
 | `opencode run "run git push origin main --force"` | blocked, the flag is fifth |
 | `opencode run "read ~/.ssh/config"` | blocked |
-| `opencode run "run ls && rm -rf /tmp/x"` | unverified. OpenCode documents matching parsed commands but not how a compound one is split |
+| `opencode run "run rm -rf /tmp/scratch"` | runs. Recursive delete is not a policy rule |
 
 Skill discovery is verifiable offline with `opencode debug skill`, which lists every skill it found and the path each resolved to. Expect the twelve mewai skills, each once, all under `.agents/skills`, plus OpenCode's own built-in `customize-opencode`.
 
@@ -189,7 +184,8 @@ Cursor hook matching is checked offline in `validate.ps1` by piping JSON into th
 | Action in chat | Expected |
 | --- | --- |
 | `run git status` | runs |
-| `run gh pr create --title test` | blocked, agent gives you the command |
+| `run gh pr create --title test` | runs. Confirm omit, not in the hook |
+| `run git commit -m test` | blocked, agent gives you the command |
 | `run git push --force` | blocked, no handoff |
 | `run rtk git push --force` | blocked, the wrapper cannot launder it |
 | `read ~/.ssh/config` | blocked |

@@ -262,6 +262,15 @@ else {
             if ([string]::IsNullOrWhiteSpace($rule.why)) {
                 Add-Failure "policy rule '$($rule.id)': no 'why'"
             }
+            if ($rule.PSObject.Properties.Name -contains 'cursor') {
+                $cursorMode = [string]$rule.cursor
+                if ($cursorMode -ne 'omit') {
+                    Add-Failure "policy rule '$($rule.id)': unknown cursor value '$cursorMode'"
+                }
+                elseif ($rule.decision -ne 'confirm') {
+                    Add-Failure "policy rule '$($rule.id)': cursor omit is only valid on confirm"
+                }
+            }
         }
 
         # A command that is both allowed and restricted is a contradiction the
@@ -587,7 +596,14 @@ else {
         $shellIds = @($cursorRules.shell | ForEach-Object { $_.id })
 
         foreach ($rule in @($policy.rules | Where-Object { $_.decision -in @('forbid', 'confirm') })) {
+            $cursorOmit = ($rule.PSObject.Properties.Name -contains 'cursor' -and [string]$rule.cursor -eq 'omit')
             if (@($rule.commands).Count -eq 0) { continue }
+            if ($cursorOmit) {
+                if ($shellIds -contains $rule.id) {
+                    Add-Failure "cursor: omitted rule '$($rule.id)' still rendered a shell matcher"
+                }
+                continue
+            }
             if ($shellIds -notcontains $rule.id) {
                 Add-Failure "cursor: rule '$($rule.id)' rendered no shell matcher"
             }
@@ -595,6 +611,9 @@ else {
 
         foreach ($rule in $policy.rules) {
             if ($rule.PSObject.Properties.Name -notcontains 'opencode_rules') { continue }
+            if ($rule.PSObject.Properties.Name -contains 'cursor' -and [string]$rule.cursor -eq 'omit') {
+                continue
+            }
             $row = @($cursorRules.shell | Where-Object { $_.id -eq $rule.id }) | Select-Object -First 1
             if (-not $row) {
                 Add-Failure "cursor: opencode_rules from '$($rule.id)' rendered no shell row"
@@ -612,12 +631,14 @@ else {
     $sshPath = Join-Path $(if ($env:HOME) { $env:HOME } else { $env:USERPROFILE }) '.ssh/config'
     $cases = @(
         @{ Name = 'read-only inspection is allowed'; Payload = '{"command":"git status"}'; Expect = 'allow' }
+        @{ Name = 'omitted confirm-tier pr create is allowed'; Payload = '{"command":"gh pr create --title test"}'; Expect = 'allow' }
         @{
-            Name          = 'confirm-tier pr create is denied with a handoff'
-            Payload       = '{"command":"gh pr create --title test"}'
+            Name          = 'local-commit is denied with a handoff'
+            Payload       = '{"command":"git commit -m test"}'
             Expect        = 'deny'
             AgentContains = 'Give the user this exact command'
         }
+        @{ Name = 'recursive delete is allowed'; Payload = '{"command":"rm -rf /tmp/scratch"}'; Expect = 'allow' }
         @{
             Name             = 'forbid-tier force push is denied without a handoff'
             Payload          = '{"command":"git push --force"}'

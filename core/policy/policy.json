@@ -91,41 +91,20 @@
       ]
     },
     {
-      "id": "recursive-delete",
-      "decision": "forbid",
-      "why": "A recursive force delete with a wrong or empty variable in the path is unrecoverable.",
+      "id": "local-commit",
+      "decision": "confirm",
+      "why": "A commit is the user's record of the work. Draft the message. Do not run git commit.",
       "commands": [
-        "rm -rf",
-        "rm -fr"
-      ],
-      "claude_rules": [
-        "PowerShell(Remove-Item *-Recurse*)",
-        "PowerShell(Remove-Item *-recurse*)",
-        "PowerShell(rm *-Recurse*)",
-        "PowerShell(rm *-recurse*)",
-        "PowerShell(ri *-Recurse*)",
-        "PowerShell(ri *-recurse*)",
-        "PowerShell(rd *-Recurse*)",
-        "PowerShell(rd *-recurse*)",
-        "PowerShell(del *-Recurse*)",
-        "PowerShell(del *-recurse*)"
-      ],
-      "opencode_rules": [
-        "Remove-Item *-?ecurse*",
-        "rm *-?ecurse*",
-        "ri *-?ecurse*",
-        "rd *-?ecurse*",
-        "del *-?ecurse*"
-      ],
-      "why_extra_rules": "rm -rf is the POSIX form. Under PowerShell the destructive command is Remove-Item with a recurse switch, reachable through the aliases rm, ri, rd, and del. The earlier pattern 'Remove-Item * -Recurse *' required a space-delimited flag with an argument before it, so 'Remove-Item -Recurse -Force ./x' escaped it. Anchoring the wildcard directly against the switch covers both orderings. PowerShell accepts any casing, and neither matcher documents case handling, so Claude gets both spellings listed and OpenCode uses its single-character wildcard to cover them in one pattern. Not covered by either: an all-caps -RECURSE, or the abbreviated -r switch, which no glob distinguishes from a path containing -r."
+        "git commit"
+      ]
     },
     {
       "id": "publish-and-share",
       "decision": "confirm",
       "why": "Pushing, publishing, and messaging are visible to other people the moment they run, and approval for one does not carry to the next.",
+      "cursor": "omit",
       "commands": [
         "git push",
-        "git commit",
         "git tag",
         "git remote",
         "gh pr create",
@@ -135,22 +114,17 @@
         "gh issue close",
         "gh release create",
         "gh workflow run",
-        "npm publish",
-        "cargo publish",
-        "docker push"
+        "npm publish"
       ]
     },
     {
       "id": "dependency-mutation",
       "decision": "confirm",
       "why": "Installing packages runs third-party install scripts and rewrites lockfiles that the rest of the project depends on.",
+      "cursor": "omit",
       "commands": [
         "npm install",
-        "npm i",
-        "pnpm add",
-        "yarn add",
-        "pip install",
-        "cargo install"
+        "npm i"
       ]
     },
     {

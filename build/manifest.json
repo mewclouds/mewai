@@ -60,7 +60,7 @@
         "core/instructions/explainability.md",
         "core/instructions/providers/cursor.md"
       ],
-      "sha256": "0ff8953285cf4ccf443d8aad8113efefed248c792690b1bdd13d2ac4fbd87a0f"
+      "sha256": "612b7bac214b59e3675a0a03a63e4a9484810c98aa8c51c3ae0c011d284129bb"
     },
     {
       "build": "build/claude/settings.json",
@@ -70,7 +70,7 @@
         "core/providers/claude/settings.json",
         "core/policy/policy.json"
       ],
-      "sha256": "6ad1461c8e9ac5a77b86c289fce4c43e7f1bf6d5ff42572ac83c5de21fd415b7"
+      "sha256": "fcd922bf32911faa1665304cfe3e43a3c98c2030c26d1ad792defec95fc207de"
     },
     {
       "build": "build/codex/rules/default.rules",
@@ -79,7 +79,7 @@
       "sources": [
         "core/policy/policy.json"
       ],
-      "sha256": "55e750ce729c02ab79cccfecd123ed33dd81e7361b944537ea7d77d22efd1c1f"
+      "sha256": "66af4b9319eaf5831f276f685435c7a213081d9b083640b0501d0d81c5ab61ee"
     },
     {
       "build": "build/codex/config.toml",
@@ -107,7 +107,7 @@
         "core/providers/opencode/opencode.json",
         "core/policy/policy.json"
       ],
-      "sha256": "a8893e84753da3203b32eb5740eabe373f086bbc07bd184c0969c7033d9ce8d9"
+      "sha256": "b6c3ef76158d9a64e0df8e57b26436bd0c0ee0a71fd9c9247d60f2939af08fc7"
     },
     {
       "build": "build/cursor/hooks.json",
@@ -134,7 +134,7 @@
       "sources": [
         "core/policy/policy.json"
       ],
-      "sha256": "f2753712397c994d386d349db26efa342007c5f4f37e6055fcbc7506bec77c69"
+      "sha256": "b9c641f89fbcca580167e08f2a6f0b55c2fb205e91d901d73d6a58cf5b8c058d"
     },
     {
       "build": "build/claude/skills/code-review/SKILL.md",

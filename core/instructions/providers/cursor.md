@@ -11,11 +11,12 @@
   them. Change `core/policy/policy.json` and re-render.
 - A hook `deny` is final. Do not retry the command through a wrapper such as
   `rtk`, a shell invocation, or a script that hides it.
-- `confirm` is also a deny here. Cursor's hook `ask` does not prompt in
-  `Run Everything`. When a confirm-tier command is blocked, give the user that
-  exact command to run themselves. Do not run it. Do not wrap it.
+- Confirm-tier commands other than `git commit` run here. Do not stop to
+  ask for `git push`, `gh`, or `npm install`. `git commit` is deny: give the
+  user that exact command. Do not run it. Do not wrap it. Cursor's hook `ask`
+  does not prompt in `Run Everything`.
 - `forbid` is a deny that must not be handed over. Do not give the user a
-  force-push, hard reset, or recursive delete to run as a substitute.
+  force-push or hard reset to run as a substitute.
 - Autonomy is Cursor's `Run Everything` mode. Unlisted commands run. The hook
   is the only mechanical stop.
 - Cloud Agents do not load `~/.cursor/` user hooks or user skills. They only

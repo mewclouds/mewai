@@ -44,54 +44,11 @@
       "globs": []
     },
     {
-      "id": "recursive-delete",
-      "tier": "forbid",
-      "why": "A recursive force delete with a wrong or empty variable in the path is unrecoverable.",
-      "tokens": [
-        "rm -rf",
-        "rm -fr"
-      ],
-      "globs": [
-        "Remove-Item *-?ecurse*",
-        "rm *-?ecurse*",
-        "ri *-?ecurse*",
-        "rd *-?ecurse*",
-        "del *-?ecurse*"
-      ]
-    },
-    {
-      "id": "publish-and-share",
+      "id": "local-commit",
       "tier": "confirm",
-      "why": "Pushing, publishing, and messaging are visible to other people the moment they run, and approval for one does not carry to the next.",
+      "why": "A commit is the user's record of the work. Draft the message. Do not run git commit.",
       "tokens": [
-        "git push",
-        "git commit",
-        "git tag",
-        "git remote",
-        "gh pr create",
-        "gh pr merge",
-        "gh pr close",
-        "gh issue create",
-        "gh issue close",
-        "gh release create",
-        "gh workflow run",
-        "npm publish",
-        "cargo publish",
-        "docker push"
-      ],
-      "globs": []
-    },
-    {
-      "id": "dependency-mutation",
-      "tier": "confirm",
-      "why": "Installing packages runs third-party install scripts and rewrites lockfiles that the rest of the project depends on.",
-      "tokens": [
-        "npm install",
-        "npm i",
-        "pnpm add",
-        "yarn add",
-        "pip install",
-        "cargo install"
+        "git commit"
       ],
       "globs": []
     }

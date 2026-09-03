@@ -191,15 +191,3 @@ prefix_rule(
     decision="forbidden",
     justification="Deleting a remote repository or release is never an incidental development action. Do it by hand after verifying the exact target.",
 )
-
-# recursive-delete: A recursive force delete with a wrong or empty variable in the path is unrecoverable.
-prefix_rule(
-    pattern=["rm", "-rf"],
-    decision="forbidden",
-    justification="A recursive force delete with a wrong or empty variable in the path is unrecoverable.",
-)
-prefix_rule(
-    pattern=["rm", "-fr"],
-    decision="forbidden",
-    justification="A recursive force delete with a wrong or empty variable in the path is unrecoverable.",
-)

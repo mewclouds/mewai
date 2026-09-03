@@ -78,6 +78,8 @@ Choose the decision by what happens if the command runs when it should not have:
 
 Before adding a `forbid`, check that the prefix actually matches the form you are worried about. See the flag-position and wrapper sections in `PROVIDERS.md`.
 
+`cursor: "omit"` is valid only on `confirm`. It keeps the prompt on Claude Code and OpenCode, and leaves the command out of the Cursor hook so it runs. Forbid cannot use it. Without the field, confirm still renders as Cursor deny.
+
 ## After any change
 
 ```bash

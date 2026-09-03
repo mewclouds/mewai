@@ -120,6 +120,15 @@ function Get-Policy {
         if ([string]::IsNullOrWhiteSpace($rule.why)) {
             throw "rule '$($rule.id)' has no 'why'. Every boundary states its reason."
         }
+        if ($rule.PSObject.Properties.Name -contains 'cursor') {
+            $cursorMode = [string]$rule.cursor
+            if ($cursorMode -ne 'omit') {
+                throw "rule '$($rule.id)' has unknown cursor value '$cursorMode'. Use omit, or omit the field."
+            }
+            if ($rule.decision -ne 'confirm') {
+                throw "rule '$($rule.id)': cursor omit is only valid on confirm. Forbid cannot be dropped from the Cursor hook."
+            }
+        }
     }
     $policy
 }
@@ -382,12 +391,13 @@ function New-CursorRules {
 
         Cursor hook `ask` is a no-op in Run Everything, so confirm is written as
         deny and the script tells the agent to hand the user the exact command.
+        A confirm rule with cursor omit is left out of the hook and runs.
         Forbid is deny without that handoff. Allow is omitted: unlisted commands
         fall through to Run Everything.
 
         Token phrases come from policy commands. Globs reuse opencode_rules,
         which are already unwrapped command strings that close the flag-position
-        and PowerShell-delete gaps prefix matching cannot.
+        gap prefix matching cannot.
     #>
     param([object]$Policy)
 
@@ -397,6 +407,9 @@ function New-CursorRules {
     foreach ($tier in @('forbid', 'confirm')) {
         foreach ($rule in $Policy.rules) {
             if ($rule.decision -ne $tier) { continue }
+            if ($rule.PSObject.Properties.Name -contains 'cursor' -and [string]$rule.cursor -eq 'omit') {
+                continue
+            }
 
             $tokens = [System.Collections.Generic.List[string]]::new()
             foreach ($command in @($rule.commands)) {
