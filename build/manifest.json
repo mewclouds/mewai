@@ -332,7 +332,7 @@
       "sources": [
         "core/skills/i-have-adhd/SKILL.md"
       ],
-      "sha256": "b663e0b7a468273d58381f0ee9530a18246ac8b0393e62f74eaf110800acdfd3"
+      "sha256": "f5b43578cd3ff4c32e027e64507a98dd37e54a718d138006a70282e0cd561cc9"
     },
     {
       "build": "build/codex/skills/i-have-adhd/SKILL.md",
@@ -341,7 +341,7 @@
       "sources": [
         "core/skills/i-have-adhd/SKILL.md"
       ],
-      "sha256": "b663e0b7a468273d58381f0ee9530a18246ac8b0393e62f74eaf110800acdfd3"
+      "sha256": "f5b43578cd3ff4c32e027e64507a98dd37e54a718d138006a70282e0cd561cc9"
     },
     {
       "build": "build/antigravity/skills/i-have-adhd/SKILL.md",
@@ -350,7 +350,7 @@
       "sources": [
         "core/skills/i-have-adhd/SKILL.md"
       ],
-      "sha256": "b663e0b7a468273d58381f0ee9530a18246ac8b0393e62f74eaf110800acdfd3"
+      "sha256": "f5b43578cd3ff4c32e027e64507a98dd37e54a718d138006a70282e0cd561cc9"
     },
     {
       "build": "build/claude/skills/reply-draft/SKILL.md",
