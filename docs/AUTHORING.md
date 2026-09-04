@@ -34,6 +34,20 @@ One rule lives in exactly one place. The validator fails the build on duplicates
 
 If a rule is enforced by the policy or by the validator, it does not also need to be prose. Enforcement beats instruction, and the prose copy is what goes stale.
 
+## Conditional blocks
+
+Rules that apply to almost every task stay as plain markdown. Rules that only
+matter for a kind of work go in `<important if="condition">` with a trigger
+narrow enough that it does not match unrelated tasks.
+
+Do not wrap a prohibition in a condition that only matches after the
+prohibited action has started. A rule that says not to auto-trigger a skill
+has to be visible when the agent is considering a skill, not only when it is
+already invoking one.
+
+These tags render into every provider. Keep the safety floor (Autonomy,
+Secrets, Evidence) bare.
+
 ## Line budgets
 
 Enforced by `scripts/validate.ps1`:

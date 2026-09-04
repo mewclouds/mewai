@@ -26,7 +26,8 @@ Instruction files rot in one direction. Every correction adds a bullet, nothing 
 
 4. Write the narrowest rule that prevents it. Tighten an existing rule if one
    already covers the area. Do not append a second bullet that says the same thing
-   more emphatically.
+   more emphatically. Leave a rule bare when it applies to almost every task.
+   Wrap it in `<important if>` when it only matters for a kind of work.
 5. Re-render and validate.
 
 ## The test a rule must pass

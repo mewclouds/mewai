@@ -152,6 +152,17 @@ foreach ($module in $styleTargets) {
     }
 }
 
+# --- important-if tags -------------------------------------------------------
+# Unbalanced tags would drop a rule from the rendered file with no other signal.
+
+foreach ($module in $modules) {
+    $opens = [regex]::Matches($module.Text, '<important if="[^"]*">').Count
+    $closes = [regex]::Matches($module.Text, '</important>').Count
+    if ($opens -ne $closes) {
+        Add-Failure ("{0}: {1} opening important-if tag(s) and {2} closing tag(s)" -f $module.Relative, $opens, $closes)
+    }
+}
+
 # --- line budgets ------------------------------------------------------------
 
 foreach ($module in $modules) {

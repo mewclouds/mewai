@@ -12,7 +12,7 @@
         "core/instructions/explainability.md",
         "core/instructions/providers/claude.md"
       ],
-      "sha256": "5b3c7fcb9f8531d55f5ef6de030ea36f6370805fe3b9255d42053481a7994b4a"
+      "sha256": "36c0271d66426fee1898a63b13073cbed389482b2480954bee432d92da62dfe3"
     },
     {
       "build": "build/codex/AGENTS.md",
@@ -24,7 +24,7 @@
         "core/instructions/explainability.md",
         "core/instructions/providers/codex.md"
       ],
-      "sha256": "f901f676c216dd3a515536abd2e0acf451268160bee7f172bd5cafa8c7da3818"
+      "sha256": "507ee8d19587fa7a8c97710961b150ee6d5814f3757100cc088509d03de0cf67"
     },
     {
       "build": "build/antigravity/GEMINI.md",
@@ -36,7 +36,7 @@
         "core/instructions/explainability.md",
         "core/instructions/providers/antigravity.md"
       ],
-      "sha256": "95de257f2319e92714a3bc21fcdb28aa1900887e18be68c3461ab2008ef50fff"
+      "sha256": "6d457a537a46e73bc99bc00238eff1c132450198182908a737b559811799f7ae"
     },
     {
       "build": "build/opencode/AGENTS.md",
@@ -48,7 +48,7 @@
         "core/instructions/explainability.md",
         "core/instructions/providers/opencode.md"
       ],
-      "sha256": "2d05011f9aaff8bbcf40775d4475f8f6aef0abd55ee1583a47354813f1489586"
+      "sha256": "d243464651e1c494b7a8fe10cc00bbb3f00179c60ab29056f680504d21fb3dbc"
     },
     {
       "build": "build/cursor/mewai.mdc",
@@ -60,7 +60,7 @@
         "core/instructions/explainability.md",
         "core/instructions/providers/cursor.md"
       ],
-      "sha256": "612b7bac214b59e3675a0a03a63e4a9484810c98aa8c51c3ae0c011d284129bb"
+      "sha256": "5806a0a8a1e1f7d5efbce59029f0da71d35ae09d89e20f05285080f58dd0639c"
     },
     {
       "build": "build/claude/settings.json",
@@ -380,13 +380,40 @@
       "sha256": "039b5d0ba7fd7477b31107e88f37221eaa91c731eb90ee75dd3ed8c649d8fcae"
     },
     {
+      "build": "build/claude/skills/review-pr/SKILL.md",
+      "install": "~/.claude/skills/review-pr/SKILL.md",
+      "action": "copy",
+      "sources": [
+        "core/skills/review-pr/SKILL.md"
+      ],
+      "sha256": "a735affa536306fa1716c855f688f56216e623de1b8ba0462be2f87412aa6449"
+    },
+    {
+      "build": "build/codex/skills/review-pr/SKILL.md",
+      "install": "~/.agents/skills/review-pr/SKILL.md",
+      "action": "copy",
+      "sources": [
+        "core/skills/review-pr/SKILL.md"
+      ],
+      "sha256": "a735affa536306fa1716c855f688f56216e623de1b8ba0462be2f87412aa6449"
+    },
+    {
+      "build": "build/antigravity/skills/review-pr/SKILL.md",
+      "install": "~/.gemini/skills/review-pr/SKILL.md",
+      "action": "copy",
+      "sources": [
+        "core/skills/review-pr/SKILL.md"
+      ],
+      "sha256": "a735affa536306fa1716c855f688f56216e623de1b8ba0462be2f87412aa6449"
+    },
+    {
       "build": "build/claude/skills/rule-tender/SKILL.md",
       "install": "~/.claude/skills/rule-tender/SKILL.md",
       "action": "copy",
       "sources": [
         "core/skills/rule-tender/SKILL.md"
       ],
-      "sha256": "8bf740b2d1f41b79918ba5d94c53795e2bf71545d6ec4fd298db7f414c6e26a2"
+      "sha256": "a7e6bc650c23817d25f5d5d87763fae1f297fa65aa902f4b6b550671566c36e0"
     },
     {
       "build": "build/codex/skills/rule-tender/SKILL.md",
@@ -395,7 +422,7 @@
       "sources": [
         "core/skills/rule-tender/SKILL.md"
       ],
-      "sha256": "8bf740b2d1f41b79918ba5d94c53795e2bf71545d6ec4fd298db7f414c6e26a2"
+      "sha256": "a7e6bc650c23817d25f5d5d87763fae1f297fa65aa902f4b6b550671566c36e0"
     },
     {
       "build": "build/antigravity/skills/rule-tender/SKILL.md",
@@ -404,7 +431,7 @@
       "sources": [
         "core/skills/rule-tender/SKILL.md"
       ],
-      "sha256": "8bf740b2d1f41b79918ba5d94c53795e2bf71545d6ec4fd298db7f414c6e26a2"
+      "sha256": "a7e6bc650c23817d25f5d5d87763fae1f297fa65aa902f4b6b550671566c36e0"
     },
     {
       "build": "build/claude/skills/session-recap/SKILL.md",

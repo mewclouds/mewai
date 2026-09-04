@@ -3,6 +3,12 @@
 
 # Agent instructions
 
+User-level defaults for every repository. A project's `AGENTS.md` is the project-specific layer.
+
+- Durable project conventions belong in that project's `AGENTS.md`.
+- Reusable workflows belong in a skill.
+- Command boundaries belong in the policy, not in prose.
+
 ## Evidence
 
 - Prefer repository evidence, official documentation, and verification over guesses.
@@ -13,8 +19,6 @@
 
 ## Code quality
 
-- Write code that is clear without requiring the reader to reverse-engineer intent.
-- Prefer descriptive names and straightforward control flow over explanatory comments.
 - Comments explain why something is necessary, surprising, or constrained. They do
   not narrate what the next line does.
 - Avoid decorative comment banners, numbered-step comments, section dividers, and
@@ -23,21 +27,20 @@
   code that already explains itself.
 - Replace unexplained domain values with named constants. Do not extract obvious
   literals to satisfy a rule.
-- Avoid cleverness, hidden behavior, and abstractions that make simple code harder
-  to follow.
-- Make errors specific and actionable rather than vague or generic.
 
 ## Commands
 
 - Prefer running tests, linters, type checks, and builds over predicting their result.
 - Read complete errors, logs, and stack traces before fixing them.
-- Use `rg` and `fd` instead of `grep` and `find`. They are faster and respect
-  `.gitignore`.
-- Use `rtk` when output is likely to be large or repetitive and a filtered summary is
-  enough. Good candidates are test suites, builds, linters, logs, and broad searches.
 - Use raw commands when exact output, exit status, quoting, or pipeline behavior
   matters, or when inspecting one narrow result.
-- Rerun a command raw when `rtk` hides detail you need.
+
+<important if="you are searching the repository">
+- Use `rg` and `fd` instead of `grep` and `find`. They are faster and respect
+  `.gitignore`.
+</important>
+
+<important if="you are editing, creating, or deleting files">
 
 ## Scope
 
@@ -49,15 +52,7 @@
 - Do not delete pre-existing dead code unless asked. Mention it if it matters.
 - Do not add speculative features, configurability, or extension points.
 - Run the relevant validation before reporting work complete.
-
-## Where rules live
-
-- Durable project conventions belong in that project's `AGENTS.md`.
-- Reusable workflows belong in a skill.
-- Cross-provider behavior belongs in the shared instruction modules.
-- Command boundaries belong in the policy, not in prose.
-- When a correction arrives, tighten the narrowest rule that covers it rather than
-  appending a warning to the nearest file.
+</important>
 
 ## Writing
 
@@ -106,6 +101,8 @@ Report the exact blocker. Never report full success when a required step failed,
 
 The user owns this code. Work is not finished when it passes, it is finished when the user could explain the change to someone else without rereading the transcript.
 
+<important if="you are implementing, fixing, or explaining a change">
+
 ### While working
 
 - Name the mechanism, not just the fix. "Added a null check" is a patch note. "The
@@ -118,27 +115,37 @@ The user owns this code. Work is not finished when it passes, it is finished whe
   time it appears.
 - When something surprising turns up in the codebase, say so. Surprises are where the
   user's mental model and reality differ, and that gap is worth more than the fix.
+</important>
+
+<important if="you are reporting a substantive change complete">
 
 ### Finishing substantive work
 
-Close with what changed, why, and what to watch for. Keep it short. Skip it entirely for trivial mechanical edits, since ceremony on a one-line change teaches nothing.
-
-### What not to do
-
-- Do not explain by restating the diff in prose.
-- Do not pad with background the user already demonstrated they know.
-- Do not hide uncertainty behind a confident summary. Say which parts are verified
-  and which parts are inference.
+Close with what changed, why, and what to watch for. Keep it short. Skip it entirely for trivial mechanical edits, since ceremony on a one-line change teaches nothing. Do not restate the diff in prose, pad with background the user already demonstrated they know, or hide uncertainty behind a confident summary. Say which parts are verified and which parts are inference.
+</important>
 
 ## Claude Code specifics
 
+<important if="you are considering or using a skill">
 - Skills live in `~/.claude/skills/` and are invoked by name with a leading slash.
-  A skill marked "only when explicitly invoked" must not be triggered on its own.
+</important>
+
+- A skill marked "only when explicitly invoked" must not be triggered on its own.
+
+<important if="you are about to edit provider settings or this instruction file">
 - The permission rules in `~/.claude/settings.json` are rendered from `mewai`. Do not
   hand-edit that file. Change `core/policy/policy.json` and re-render,
   otherwise the next install overwrites the edit.
+</important>
+
 - Deny and ask rules apply in every permission mode, including `bypassPermissions`.
   A denied command is a boundary, not a prompt that failed to appear.
+
+<important if="you are considering a subagent">
 - Use subagents only when the user asks for them or a skill calls for one. They start
   without the current context and re-derive what this session already established.
+</important>
+
+<important if="you are citing a file">
 - Reference files as `path/to/file.ts:42` so they are clickable.
+</important>
