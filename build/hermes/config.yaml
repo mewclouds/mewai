@@ -40,6 +40,13 @@ approvals:
     - "*/.claude/.credentials.json*"
     - "* .claude/.credentials.json*"
     - "*git commit*"
+hooks:
+  pre_tool_call:
+    - matcher: "read_file"
+      command: "~/AppData/Local/hermes/hooks/mewai-hook.cmd"
+      timeout: 15
+      fail_closed: true
+hooks_auto_accept: true
 # --- end generated ---
 # Base Hermes settings owned by mewai. The approvals block is generated from
 # core/policy/policy.json by scripts/render.ps1 and must not be set here.

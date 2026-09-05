@@ -242,6 +242,32 @@ function ConvertTo-HermesReadPattern {
     @("*/$core*", "* $core*")
 }
 
+function New-HermesHookRules {
+    <#
+        Emits the read patterns the pre_tool_call hook matches against.
+
+        approvals.deny only sees terminal commands. read_file is a native Hermes
+        tool, so a secret-file rule needs the hook to have any effect there. This
+        is the same split Cursor has: a rule table plus a matcher script.
+    #>
+    param([object]$Policy)
+
+    $read = [System.Collections.Generic.List[object]]::new()
+
+    foreach ($rule in $Policy.rules) {
+        if ($rule.decision -ne 'forbid') { continue }
+        if ($rule.PSObject.Properties.Name -notcontains 'read_paths') { continue }
+
+        $read.Add([ordered]@{
+            id       = $rule.id
+            why      = $rule.why
+            patterns = @(@($rule.read_paths) | ForEach-Object { $_ -replace '^\./', '' })
+        })
+    }
+
+    (([ordered]@{ read = @($read) } | ConvertTo-Json -Depth 32 -WarningAction Stop) + "`n")
+}
+
 function New-HermesConfig {
     <#
         Emits the generated approvals block followed by the base config verbatim.
@@ -303,6 +329,16 @@ function New-HermesConfig {
     foreach ($pattern in $unique) {
         $lines.Add('    - "' + $pattern + '"')
     }
+    $lines.Add('hooks:')
+    $lines.Add('  pre_tool_call:')
+    $lines.Add('    - matcher: "read_file"')
+    $lines.Add('      command: "~/AppData/Local/hermes/hooks/mewai-hook.cmd"')
+    $lines.Add('      timeout: 15')
+    $lines.Add('      fail_closed: true')
+    # Without this the hook is skipped whenever its script hash is not on the
+    # allowlist, and a skipped hook is a boundary that silently stopped existing.
+    # A re-render changes the hash, so the prompt would fire again every install.
+    $lines.Add('hooks_auto_accept: true')
     $lines.Add('# --- end generated ---')
     $lines.Add('')
 
@@ -436,6 +472,24 @@ $configTargets = @(
         Install = '~/.claude/statusline-command.sh'
         Content = (Get-Content -Path (Join-Path $CoreDir 'providers/claude/statusline-command.sh') -Raw)
         Sources = @('core/providers/claude/statusline-command.sh')
+    },
+    @{
+        Build   = 'build/hermes/hooks/mewai-hook.ps1'
+        Install = '~/AppData/Local/hermes/hooks/mewai-hook.ps1'
+        Content = (Get-Content -Path (Join-Path $CoreDir 'providers/hermes/mewai-hook.ps1') -Raw)
+        Sources = @('core/providers/hermes/mewai-hook.ps1')
+    },
+    @{
+        Build   = 'build/hermes/hooks/mewai-hook.cmd'
+        Install = '~/AppData/Local/hermes/hooks/mewai-hook.cmd'
+        Content = (Get-Content -Path (Join-Path $CoreDir 'providers/hermes/mewai-hook.cmd') -Raw)
+        Sources = @('core/providers/hermes/mewai-hook.cmd')
+    },
+    @{
+        Build   = 'build/hermes/hooks/rules.json'
+        Install = '~/AppData/Local/hermes/hooks/rules.json'
+        Content = New-HermesHookRules -Policy $policy
+        Sources = @('core/policy/policy.json')
     },
     @{
         Build   = 'build/hermes/config.yaml'

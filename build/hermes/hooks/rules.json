@@ -1,0 +1,20 @@
+{
+  "read": [
+    {
+      "id": "secret-files",
+      "why": "Reading a credential into the transcript exposes it to the model provider and to anyone the transcript is later shared with.",
+      "patterns": [
+        ".env",
+        ".env.*",
+        "**/.env",
+        "**/*.pem",
+        "**/id_rsa",
+        "**/id_ed25519",
+        "~/.ssh/**",
+        "~/.aws/credentials",
+        "~/.codex/auth.json",
+        "~/.claude/.credentials.json"
+      ]
+    }
+  ]
+}

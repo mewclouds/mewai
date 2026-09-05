@@ -77,7 +77,9 @@ So mewai renders both `forbid` and `confirm` into `approvals.deny`, the same dec
 
 Because the match runs against the whole command string, a pattern needs no leading-wildcard variant to survive a wrapper: `*git push --force*` already catches `rtk git push --force`. Hermes also matches over the same deobfuscated variants its dangerous-pattern detector uses, so quoting tricks do not slip past.
 
-Two gaps worth knowing. `approvals.deny` applies to shell commands on host-reaching backends only, so an isolated container backend skips the guard stack entirely. And it does not cover Hermes' own non-shell tools: `read_file` is workspace-scoped on its own, and `write_file` and `patch` refuse `~/.ssh`, `~/.aws`, and `~/.kube`, but the terminal tool runs as the same OS user. The rendered `secret-files` read paths are therefore emitted as command globs, anchored on a path separator or on the whitespace that starts an argument, so `*/.env*` does not also block `--env` and `environment`.
+`approvals.deny` applies to shell commands on host-reaching backends only, so an isolated container backend skips the guard stack entirely. It also does not cover Hermes' own non-shell tools. `write_file` and `patch` carry a built-in denylist for `~/.ssh`, `~/.aws`, and `~/.kube`. **`read_file` has no path restriction at all**, which was confirmed by watching it read `~/.ssh/` outside any workspace. There is no `HERMES_READ_SAFE_ROOT`.
+
+That is why the `secret-files` rule renders twice. Its paths become command globs in `approvals.deny`, anchored on a path separator or on the whitespace that starts an argument so `*/.env*` does not also block `--env` and `environment`. The same paths become `rules.json` next to a `pre_tool_call` hook, which is the only thing that reaches `read_file`. See "The read hook" below.
 
 ### Hermes home is not `~/.hermes` on Windows
 
@@ -86,6 +88,20 @@ The Hermes documentation describes `~/.hermes/`. On a Windows native install tha
 That path is hardcoded rather than resolved from `$env:HERMES_HOME` at render time, because rendering has to be pure. The same `core/` must produce byte-identical `build/` output on every machine, and CI depends on it. Resolving an environment variable during render would make the manifest machine-specific and break that.
 
 The cost is that a Linux, macOS, or WSL2 install of Hermes reads `~/.hermes/` and would need the two paths in the provider row and the config target changed. There is one install of Hermes here and it is Windows native, so this is a known limitation rather than a bug.
+
+### The read hook
+
+`approvals.deny` never sees `read_file`, so `secret-files` needs a second mechanism. mewai renders a `pre_tool_call` shell hook: `mewai-hook.cmd` calls `mewai-hook.ps1`, which matches the tool arguments against `rules.json` and returns `{"action":"block"}` or `{}`.
+
+Three things about it are load bearing and were each found the hard way.
+
+**The entry point must be batch, not shell.** Hermes cannot exec a `.sh` on Windows. It fails with `[WinError 193] %1 is not a valid Win32 application`, and the failure is a log line rather than anything visible in the session. Hermes does accept a command string with arguments, but it does not expand `~` inside them, so `pwsh -File ~/...` fails too. The `.cmd` wrapper exists because `%~dp0` locates the matcher without a machine-specific absolute path.
+
+**`hooks_auto_accept: true` is rendered on purpose.** An unapproved hook script is skipped with a warning, not blocked, so the boundary silently stops existing. Re-rendering changes the script, which drops it off the allowlist again, which means every install would leave the hook inert until someone approved it at a TTY prompt that headless sessions never see. `fail_closed: true` covers the case where the hook runs and fails.
+
+**The matcher checks every string in `tool_input`.** Hermes does not document which argument name `read_file` uses for its path. Scanning all string values cannot miss it by guessing the wrong key.
+
+The hook only covers `read_file`. Terminal commands are already covered by `approvals.deny`, and doubling up would mean two places to change one rule.
 
 ### Flag position
 

@@ -533,6 +533,77 @@ elseif ($policy) {
     }
 }
 
+# --- hermes read hook --------------------------------------------------------
+# These run the rendered matcher the way Hermes will: JSON on stdin, JSON on
+# stdout. They prove the matcher decides. They do not prove Hermes invoked it.
+
+$hermesHook = Join-Path $RepoRoot 'build/hermes/hooks/mewai-hook.ps1'
+$hermesHookRules = Join-Path $RepoRoot 'build/hermes/hooks/rules.json'
+$hermesHookCmd = Join-Path $RepoRoot 'build/hermes/hooks/mewai-hook.cmd'
+
+if (-not (Test-Path $hermesHook) -or -not (Test-Path $hermesHookRules)) {
+    Add-Failure 'build/hermes/hooks/ is missing the matcher or its rules'
+}
+else {
+    if ((Get-Content -Path $hermesHookCmd -Raw) -notmatch '%~dp0') {
+        Add-Failure 'hermes hook wrapper does not use %~dp0, so it would need a machine-specific absolute path'
+    }
+
+    $hookHome = $HOME.Replace([char]92, [char]47)
+
+    $hookCases = @(
+        @{ Name = 'ssh private key'; Path = 'C:/Users/someone/.ssh/id_ed25519'; Block = $true }
+        # ~/.ssh/** resolves against the running user's home, so this case has to
+        # build from the same place the matcher will.
+        @{ Name = 'ssh directory'; Path = ($hookHome + '/.ssh/config'); Block = $true }
+        @{ Name = 'project dotenv'; Path = 'C:/repo/app/.env'; Block = $true }
+        @{ Name = 'pem key'; Path = '/srv/certs/server.pem'; Block = $true }
+        @{ Name = 'ordinary source file'; Path = 'C:/repo/src/main.ts'; Block = $false }
+        @{ Name = 'readme'; Path = 'C:/repo/README.md'; Block = $false }
+    )
+
+    foreach ($case in $hookCases) {
+        $payload = [ordered]@{
+            hook_event_name = 'pre_tool_call'
+            tool_name       = 'read_file'
+            tool_input      = [ordered]@{ path = $case.Path }
+        } | ConvertTo-Json -Compress -Depth 5
+
+        $out = $payload | & pwsh -NoProfile -File $hermesHook 2>$null
+        $decision = $null
+        try { $decision = $out | ConvertFrom-Json } catch { }
+
+        if ($null -eq $decision) {
+            Add-Failure "hermes hook: '$($case.Name)' produced no parseable decision"
+            continue
+        }
+
+        $blocked = ($null -ne $decision.PSObject.Properties['action'] -and $decision.action -eq 'block')
+
+        if ($case.Block -and -not $blocked) {
+            Add-Failure "hermes hook: '$($case.Name)' ($($case.Path)) was allowed, expected block"
+        }
+        if (-not $case.Block -and $blocked) {
+            Add-Failure "hermes hook: '$($case.Name)' ($($case.Path)) was blocked, expected allow"
+        }
+    }
+
+    # A payload the matcher cannot read must not fall through to allow.
+    $garbage = 'not json at all' | & pwsh -NoProfile -File $hermesHook 2>$null
+    $garbageDecision = $null
+    try { $garbageDecision = $garbage | ConvertFrom-Json } catch { }
+    if ($null -eq $garbageDecision -or $null -eq $garbageDecision.PSObject.Properties['action'] -or $garbageDecision.action -ne 'block') {
+        Add-Failure 'hermes hook: an unparseable payload did not fail closed'
+    }
+}
+
+if (Test-Path $hermesBasePath) {
+    $baseLines = Get-Content -Path $hermesBasePath
+    if ($baseLines -match '^hooks:' -or $baseLines -match '^hooks_auto_accept:') {
+        Add-Failure 'core/providers/hermes/config.yaml declares hooks or hooks_auto_accept. Both are generated, and a second key would be a duplicate.'
+    }
+}
+
 # --- report ------------------------------------------------------------------
 
 foreach ($skip in $script:Skipped) {

@@ -50,6 +50,33 @@
       "sha256": "7897215768dd0c7794e12dd408b9a292e2e1d728d9c0ef8c387f72e40da8279e"
     },
     {
+      "build": "build/hermes/hooks/mewai-hook.ps1",
+      "install": "~/AppData/Local/hermes/hooks/mewai-hook.ps1",
+      "action": "copy",
+      "sources": [
+        "core/providers/hermes/mewai-hook.ps1"
+      ],
+      "sha256": "c32c0c939c4ef8094647ca05fc308cd4900df0f71df6a4a094efc60b61859d0a"
+    },
+    {
+      "build": "build/hermes/hooks/mewai-hook.cmd",
+      "install": "~/AppData/Local/hermes/hooks/mewai-hook.cmd",
+      "action": "copy",
+      "sources": [
+        "core/providers/hermes/mewai-hook.cmd"
+      ],
+      "sha256": "0fbde5c9226a4b45dcc10df8fc0d16e2def27f5682ca6c8083bc00fb7a6bb794"
+    },
+    {
+      "build": "build/hermes/hooks/rules.json",
+      "install": "~/AppData/Local/hermes/hooks/rules.json",
+      "action": "copy",
+      "sources": [
+        "core/policy/policy.json"
+      ],
+      "sha256": "5ba4452947b296ca3f37014d7e2732638b917000b9abb30c60495e2549af3f83"
+    },
+    {
       "build": "build/hermes/config.yaml",
       "install": "~/AppData/Local/hermes/config.yaml",
       "action": "copy",
@@ -57,7 +84,7 @@
         "core/providers/hermes/config.yaml",
         "core/policy/policy.json"
       ],
-      "sha256": "d3730c489b2d98550fded3927fd8742ba12825caa1d11965607c7d8a81508e52"
+      "sha256": "98705140db276a69a10e4093018e5da44fcf73cb166db5209ddabef542aef1f0"
     },
     {
       "build": "build/cursor/hooks.json",
