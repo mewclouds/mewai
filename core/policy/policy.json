@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "note": "Single source for command boundaries. Rendered into Claude Code permission rules, Codex execpolicy rules, and OpenCode permission patterns. Edit this file, then run scripts/render.ps1.",
+  "note": "Single source for command boundaries. Rendered into Claude Code permission rules and the Cursor hook rule table. Edit this file, then run scripts/render.ps1.",
   "decisions": {
     "allow": "Runs without a prompt. Reserved for commands that cannot change state.",
     "confirm": "Prompts every time. Survives bypassPermissions in Claude Code.",
@@ -61,12 +61,12 @@
         "PowerShell(git push * -f)",
         "PowerShell(git push * -f *)"
       ],
-      "opencode_rules": [
+      "glob_rules": [
         "git push * --force*",
         "git push * -f",
         "git push * -f *"
       ],
-      "why_extra_rules": "A prefix rule only matches when the flag is the third word. 'git push origin main --force' has it fifth, so the prefix rules above miss it. Claude Code and OpenCode both express a wildcard mid-pattern and close the gap. Codex prefix_rule cannot, so the Codex guarantee stays narrower. See docs/PROVIDERS.md."
+      "why_extra_rules": "A prefix rule only matches when the flag is the third word. 'git push origin main --force' has it fifth, so the prefix rules above miss it. claude_rules closes the gap for Claude Code. glob_rules closes it for the Cursor hook, which matches them against the whole command string. See docs/PROVIDERS.md."
     },
     {
       "id": "discard-work",
@@ -144,7 +144,7 @@
         "~/.codex/auth.json",
         "~/.claude/.credentials.json"
       ],
-      "why_read_paths": "A file-read boundary, not a command boundary. Claude Code renders these as Read() rules and OpenCode as permission.read entries. Codex has no file-read matcher, so it gets nothing from this rule, which is why its commands array is empty."
+      "why_read_paths": "A file-read boundary, not a command boundary, which is why the commands array is empty. Claude Code renders these as Read() rules and the Cursor hook matches them before a read."
     }
   ]
 }

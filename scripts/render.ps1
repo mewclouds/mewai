@@ -39,22 +39,10 @@ $Providers = @(
         SkillsInstallRoot  = '~/.claude/skills'
     },
     @{
-        Name               = 'codex'
-        InstructionFile    = 'AGENTS.md'
-        InstructionInstall = '~/.codex/AGENTS.md'
-        SkillsInstallRoot  = '~/.agents/skills'
-    },
-    @{
         Name               = 'antigravity'
         InstructionFile    = 'GEMINI.md'
         InstructionInstall = '~/.gemini/GEMINI.md'
         SkillsInstallRoot  = '~/.gemini/skills'
-    },
-    @{
-        Name               = 'opencode'
-        InstructionFile    = 'AGENTS.md'
-        InstructionInstall = '~/.config/opencode/AGENTS.md'
-        SkillsInstallRoot  = $null
     },
     @{
         Name                    = 'cursor'
@@ -219,168 +207,6 @@ function New-ClaudeSettings {
     ($settings | ConvertTo-Json -Depth 32 -WarningAction Stop) + "`n"
 }
 
-function ConvertTo-OpenCodeReadPattern {
-    <#
-        Turns a policy read path into the OpenCode permission.read patterns that
-        cover it. OpenCode matches file paths and expands a leading tilde, so the
-        repository-relative "./" prefix Claude Code uses means nothing there. A path
-        without one is also given a "**/" variant, because the same secret file at a
-        nested path is the same secret.
-    #>
-    param([string]$Path)
-
-    $normalized = $Path -replace '^\./', ''
-    if ($normalized.StartsWith('~')) {
-        return @($normalized)
-    }
-
-    $patterns = @($normalized)
-    if (-not $normalized.StartsWith('**/')) {
-        $patterns += "**/$normalized"
-    }
-    $patterns
-}
-
-function New-OpenCodeSettings {
-    <#
-        Emits the complete OpenCode config: the base settings from
-        core/providers/opencode/opencode.json with the rendered permission block
-        injected.
-
-        OpenCode evaluates permission patterns last-match-wins, so tier order in the
-        emitted object is part of the meaning, not formatting. Allow patterns are
-        written first and deny patterns last, which is what makes a deny outrank an
-        overlapping allow. Reordering this by hand downgrades a boundary silently.
-
-        Unlike Claude Code there is one bash matcher rather than separate Bash() and
-        PowerShell() ones, so each command produces one pattern set instead of two.
-    #>
-    param([object]$Policy)
-
-    $basePath = Join-Path $CoreDir 'providers/opencode/opencode.json'
-    if (-not (Test-Path $basePath)) {
-        throw 'core/providers/opencode/opencode.json not found'
-    }
-    $base = Get-Content -Path $basePath -Raw | ConvertFrom-Json
-
-    $buckets = @{ allow = @(); ask = @(); deny = @() }
-    $keyFor = @{ allow = 'allow'; confirm = 'ask'; forbid = 'deny' }
-
-    # An ordinal comparer, not [ordered]@{}. PowerShell's default ordered hashtable
-    # compares keys case insensitively, which silently collapses a pattern pair that
-    # differs only in casing, such as -Recurse and -recurse, down to whichever came
-    # last. Shell command patterns are case sensitive strings.
-    $readPatterns = [System.Collections.Specialized.OrderedDictionary]::new([System.StringComparer]::Ordinal)
-
-    foreach ($rule in $Policy.rules) {
-        $key = $keyFor[$rule.decision]
-
-        foreach ($command in $rule.commands) {
-            # The bare form and the trailing-wildcard form together cover both
-            # "git clean" and "git clean -fd". A trailing "*" alone would not match
-            # the bare invocation, because it needs the separating space.
-            $buckets[$key] += $command
-            $buckets[$key] += "$command *"
-
-            # Wrappers such as rtk, npx, and docker exec run their arguments without
-            # appearing to. A leading wildcard catches the laundered form. Only for
-            # rules that restrict: broadening an allow this way would approve
-            # anything that merely ends with the right words.
-            if ($rule.decision -ne 'allow') {
-                $buckets[$key] += "* $command"
-                $buckets[$key] += "* $command *"
-            }
-        }
-
-        if ($rule.PSObject.Properties.Name -contains 'opencode_rules') {
-            foreach ($raw in $rule.opencode_rules) {
-                $buckets[$key] += $raw
-            }
-        }
-
-        if ($rule.PSObject.Properties.Name -contains 'read_paths') {
-            foreach ($path in $rule.read_paths) {
-                foreach ($pattern in (ConvertTo-OpenCodeReadPattern -Path $path)) {
-                    if ($readPatterns.Contains($pattern)) { $readPatterns.Remove($pattern) }
-                    $readPatterns[$pattern] = $key
-                }
-            }
-        }
-    }
-
-    $bash = [System.Collections.Specialized.OrderedDictionary]::new([System.StringComparer]::Ordinal)
-    foreach ($tier in @('allow', 'ask', 'deny')) {
-        foreach ($pattern in $buckets[$tier]) {
-            # Re-adding moves the key to the end, so a pattern claimed by two tiers
-            # ends up in the later and stricter one. Position is the decision here.
-            if ($bash.Contains($pattern)) { $bash.Remove($pattern) }
-            $bash[$pattern] = $tier
-        }
-    }
-
-    $settings = [ordered]@{}
-    foreach ($property in $base.PSObject.Properties) {
-        if ($property.Name -eq 'permission') {
-            throw 'core/providers/opencode/opencode.json must not set permission. It is generated from core/policy/policy.json.'
-        }
-        # Keys starting with an underscore are notes for whoever edits the source
-        # file. OpenCode should never see them.
-        if ($property.Name.StartsWith('_')) { continue }
-        $settings[$property.Name] = $property.Value
-    }
-
-    $settings['permission'] = [ordered]@{
-        bash = $bash
-        read = $readPatterns
-    }
-
-    ($settings | ConvertTo-Json -Depth 32 -WarningAction Stop) + "`n"
-}
-
-function New-CodexRules {
-    <#
-        Emits Codex execpolicy prefix_rule entries.
-
-        'confirm' emits no rule on purpose. Codex execpolicy expresses allow and
-        forbidden, so a command with no matching rule falls through to Codex's own
-        approval flow, which is the behavior 'confirm' asks for.
-    #>
-    param([object]$Policy)
-
-    $lines = [System.Collections.Generic.List[string]]::new()
-    $lines.Add('# Rendered by mewai from core/policy/policy.json. Do not edit this file.')
-    $lines.Add('# Change the policy and run scripts/render.ps1.')
-    $lines.Add('#')
-    $lines.Add('# Rules control which commands Codex may run outside the sandbox.')
-    $lines.Add('# Behavioral expectations belong in AGENTS.md. Do not blanket-allow shells,')
-    $lines.Add('# wrappers, or tools that can hide arbitrary commands.')
-
-    foreach ($rule in $Policy.rules) {
-        if ($rule.decision -eq 'confirm') { continue }
-        if ($rule.commands.Count -eq 0) { continue }
-
-        $decision = if ($rule.decision -eq 'allow') { 'allow' } else { 'forbidden' }
-
-        $lines.Add('')
-        $lines.Add("# $($rule.id): $($rule.why)")
-
-        foreach ($command in $rule.commands) {
-            $words = $command -split '\s+' | Where-Object { $_ }
-            $pattern = ($words | ForEach-Object { '"' + $_ + '"' }) -join ', '
-
-            $lines.Add('prefix_rule(')
-            $lines.Add("    pattern=[$pattern],")
-            $lines.Add("    decision=`"$decision`",")
-            if ($decision -eq 'forbidden') {
-                $lines.Add("    justification=`"$($rule.why)`",")
-            }
-            $lines.Add(')')
-        }
-    }
-
-    ($lines -join "`n") + "`n"
-}
-
 function New-CursorRules {
     <#
         Emits the rule table the Cursor hook script matches against.
@@ -391,9 +217,9 @@ function New-CursorRules {
         Forbid is deny without that handoff. Allow is omitted: unlisted commands
         fall through to Run Everything.
 
-        Token phrases come from policy commands. Globs reuse opencode_rules,
-        which are already unwrapped command strings that close the flag-position
-        gap prefix matching cannot.
+        Token phrases come from policy commands. Globs come from glob_rules,
+        unwrapped command strings that close the flag-position gap prefix
+        matching cannot.
     #>
     param([object]$Policy)
 
@@ -415,8 +241,8 @@ function New-CursorRules {
             }
 
             $globs = [System.Collections.Generic.List[string]]::new()
-            if ($rule.PSObject.Properties.Name -contains 'opencode_rules') {
-                foreach ($glob in @($rule.opencode_rules)) {
+            if ($rule.PSObject.Properties.Name -contains 'glob_rules') {
+                foreach ($glob in @($rule.glob_rules)) {
                     $globs.Add([string]$glob)
                 }
             }
@@ -504,28 +330,10 @@ $configTargets = @(
         Sources = @('core/providers/claude/settings.json', 'core/policy/policy.json')
     },
     @{
-        Build   = 'build/codex/rules/default.rules'
-        Install = '~/.codex/rules/default.rules'
-        Content = New-CodexRules -Policy $policy
-        Sources = @('core/policy/policy.json')
-    },
-    @{
-        Build   = 'build/codex/config.toml'
-        Install = '~/.codex/config.toml'
-        Content = (Get-Content -Path (Join-Path $CoreDir 'providers/codex/config.toml') -Raw)
-        Sources = @('core/providers/codex/config.toml')
-    },
-    @{
         Build   = 'build/claude/statusline-command.sh'
         Install = '~/.claude/statusline-command.sh'
         Content = (Get-Content -Path (Join-Path $CoreDir 'providers/claude/statusline-command.sh') -Raw)
         Sources = @('core/providers/claude/statusline-command.sh')
-    },
-    @{
-        Build   = 'build/opencode/opencode.jsonc'
-        Install = '~/.config/opencode/opencode.jsonc'
-        Content = New-OpenCodeSettings -Policy $policy
-        Sources = @('core/providers/opencode/opencode.json', 'core/policy/policy.json')
     },
     @{
         Build   = 'build/cursor/hooks.json'

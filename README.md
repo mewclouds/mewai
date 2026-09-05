@@ -2,7 +2,7 @@
 
 This is my workflow for AI-assisted development: one source of truth for agent instructions, command boundaries, and skills, rendered into every provider I use.
 
-Today that's Claude Code, Codex, Antigravity CLI (`agy`), OpenCode, and Cursor. When I pick up another, I write one adapter in the renderer instead of maintaining another copy of my rules.
+Today that's Claude Code, Antigravity CLI (`agy`), and Cursor. When I pick up another, I write one adapter in the renderer instead of maintaining another copy of my rules.
 
 ## Why I built this
 
@@ -46,7 +46,7 @@ Check whether anything drifted:
 
 It reports four groups: in sync, modified on disk, not installed, and installed but not managed by mewai. That last group is what catches a skill I deleted from `core/` that's still sitting in a provider directory, still loading into context.
 
-When you change settings interactively in Claude Code or Codex, pull them into the repo:
+When you change settings interactively in Claude Code, pull them into the repo:
 
 ```bash
 ./scripts/reverse.sh
@@ -88,4 +88,4 @@ That's a dry run. I add `--confirm` to actually remove them. Everything removed 
 
 - PowerShell 7 for `render` and `validate`. Runs on Windows, Linux, and macOS.
 - `jq` for the shell installer and status script.
-- Nothing else. mewai doesn't install Claude Code, Codex, Antigravity CLI, or any model runtime.
+- Nothing else. mewai doesn't install Claude Code, Antigravity CLI, or any model runtime.

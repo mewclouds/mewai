@@ -10,22 +10,8 @@
       "sha256": "61c21c2d8667915132e654143bb299af3f8b57b318b7fbc6b7a5b04aa2b1598d"
     },
     {
-      "build": "build/codex/AGENTS.md",
-      "install": "~/.codex/AGENTS.md",
-      "action": "copy",
-      "sources": "core/instructions/base.md",
-      "sha256": "61c21c2d8667915132e654143bb299af3f8b57b318b7fbc6b7a5b04aa2b1598d"
-    },
-    {
       "build": "build/antigravity/GEMINI.md",
       "install": "~/.gemini/GEMINI.md",
-      "action": "copy",
-      "sources": "core/instructions/base.md",
-      "sha256": "61c21c2d8667915132e654143bb299af3f8b57b318b7fbc6b7a5b04aa2b1598d"
-    },
-    {
-      "build": "build/opencode/AGENTS.md",
-      "install": "~/.config/opencode/AGENTS.md",
       "action": "copy",
       "sources": "core/instructions/base.md",
       "sha256": "61c21c2d8667915132e654143bb299af3f8b57b318b7fbc6b7a5b04aa2b1598d"
@@ -48,24 +34,6 @@
       "sha256": "fcd922bf32911faa1665304cfe3e43a3c98c2030c26d1ad792defec95fc207de"
     },
     {
-      "build": "build/codex/rules/default.rules",
-      "install": "~/.codex/rules/default.rules",
-      "action": "copy",
-      "sources": [
-        "core/policy/policy.json"
-      ],
-      "sha256": "66af4b9319eaf5831f276f685435c7a213081d9b083640b0501d0d81c5ab61ee"
-    },
-    {
-      "build": "build/codex/config.toml",
-      "install": "~/.codex/config.toml",
-      "action": "copy",
-      "sources": [
-        "core/providers/codex/config.toml"
-      ],
-      "sha256": "d4f60993210465975bb3796880c7f646a97456a9ee5c38bf97a451083ac21c57"
-    },
-    {
       "build": "build/claude/statusline-command.sh",
       "install": "~/.claude/statusline-command.sh",
       "action": "copy",
@@ -73,16 +41,6 @@
         "core/providers/claude/statusline-command.sh"
       ],
       "sha256": "7897215768dd0c7794e12dd408b9a292e2e1d728d9c0ef8c387f72e40da8279e"
-    },
-    {
-      "build": "build/opencode/opencode.jsonc",
-      "install": "~/.config/opencode/opencode.jsonc",
-      "action": "copy",
-      "sources": [
-        "core/providers/opencode/opencode.json",
-        "core/policy/policy.json"
-      ],
-      "sha256": "b6c3ef76158d9a64e0df8e57b26436bd0c0ee0a71fd9c9247d60f2939af08fc7"
     },
     {
       "build": "build/cursor/hooks.json",
@@ -121,15 +79,6 @@
       "sha256": "76dd7b388fb189c203bf9905c55f86aa2ee7e400bed20bc01db37d62fc9d462a"
     },
     {
-      "build": "build/codex/skills/code-review/SKILL.md",
-      "install": "~/.agents/skills/code-review/SKILL.md",
-      "action": "copy",
-      "sources": [
-        "core/skills/code-review/SKILL.md"
-      ],
-      "sha256": "76dd7b388fb189c203bf9905c55f86aa2ee7e400bed20bc01db37d62fc9d462a"
-    },
-    {
       "build": "build/antigravity/skills/code-review/SKILL.md",
       "install": "~/.gemini/skills/code-review/SKILL.md",
       "action": "copy",
@@ -141,15 +90,6 @@
     {
       "build": "build/claude/skills/commit-message/SKILL.md",
       "install": "~/.claude/skills/commit-message/SKILL.md",
-      "action": "copy",
-      "sources": [
-        "core/skills/commit-message/SKILL.md"
-      ],
-      "sha256": "f8487df53ac6db3eea94fe8dd9a2e6b2e0f2371d61e37eeb5e81d5cc9238d85d"
-    },
-    {
-      "build": "build/codex/skills/commit-message/SKILL.md",
-      "install": "~/.agents/skills/commit-message/SKILL.md",
       "action": "copy",
       "sources": [
         "core/skills/commit-message/SKILL.md"
@@ -175,15 +115,6 @@
       "sha256": "fb503e84f20ea20a7631c6d0aca60ac078a7ca6dfdffda023b8cb712c2247d1e"
     },
     {
-      "build": "build/codex/skills/create-pr/SKILL.md",
-      "install": "~/.agents/skills/create-pr/SKILL.md",
-      "action": "copy",
-      "sources": [
-        "core/skills/create-pr/SKILL.md"
-      ],
-      "sha256": "fb503e84f20ea20a7631c6d0aca60ac078a7ca6dfdffda023b8cb712c2247d1e"
-    },
-    {
       "build": "build/antigravity/skills/create-pr/SKILL.md",
       "install": "~/.gemini/skills/create-pr/SKILL.md",
       "action": "copy",
@@ -199,16 +130,7 @@
       "sources": [
         "core/skills/create-skill/SKILL.md"
       ],
-      "sha256": "3cd167808d679e137dcbc158baa5453804fbfc8eb1d3366c01a58d138f719ed7"
-    },
-    {
-      "build": "build/codex/skills/create-skill/SKILL.md",
-      "install": "~/.agents/skills/create-skill/SKILL.md",
-      "action": "copy",
-      "sources": [
-        "core/skills/create-skill/SKILL.md"
-      ],
-      "sha256": "3cd167808d679e137dcbc158baa5453804fbfc8eb1d3366c01a58d138f719ed7"
+      "sha256": "bb5d02928137025771b957a23f7deb2ee3f5c994132632afeaf88907c336c28f"
     },
     {
       "build": "build/antigravity/skills/create-skill/SKILL.md",
@@ -217,20 +139,11 @@
       "sources": [
         "core/skills/create-skill/SKILL.md"
       ],
-      "sha256": "3cd167808d679e137dcbc158baa5453804fbfc8eb1d3366c01a58d138f719ed7"
+      "sha256": "bb5d02928137025771b957a23f7deb2ee3f5c994132632afeaf88907c336c28f"
     },
     {
       "build": "build/claude/skills/debug-tutor/SKILL.md",
       "install": "~/.claude/skills/debug-tutor/SKILL.md",
-      "action": "copy",
-      "sources": [
-        "core/skills/debug-tutor/SKILL.md"
-      ],
-      "sha256": "a6c6d153e04b4a663a42e8c6a9d67c1c171aff2dbc8a36c5bd8408bac9a2034d"
-    },
-    {
-      "build": "build/codex/skills/debug-tutor/SKILL.md",
-      "install": "~/.agents/skills/debug-tutor/SKILL.md",
       "action": "copy",
       "sources": [
         "core/skills/debug-tutor/SKILL.md"
@@ -256,15 +169,6 @@
       "sha256": "42afa6adbf50e1c27bdbc596e365760c3d7d038dddfdccdfcb968f2d1693ed61"
     },
     {
-      "build": "build/codex/skills/explain-code/SKILL.md",
-      "install": "~/.agents/skills/explain-code/SKILL.md",
-      "action": "copy",
-      "sources": [
-        "core/skills/explain-code/SKILL.md"
-      ],
-      "sha256": "42afa6adbf50e1c27bdbc596e365760c3d7d038dddfdccdfcb968f2d1693ed61"
-    },
-    {
       "build": "build/antigravity/skills/explain-code/SKILL.md",
       "install": "~/.gemini/skills/explain-code/SKILL.md",
       "action": "copy",
@@ -276,15 +180,6 @@
     {
       "build": "build/claude/skills/gh-issue/SKILL.md",
       "install": "~/.claude/skills/gh-issue/SKILL.md",
-      "action": "copy",
-      "sources": [
-        "core/skills/gh-issue/SKILL.md"
-      ],
-      "sha256": "5c9cc86b8b62c4d292a1bc28c0ec85f659f6198c3f88e493df4572e1624e8651"
-    },
-    {
-      "build": "build/codex/skills/gh-issue/SKILL.md",
-      "install": "~/.agents/skills/gh-issue/SKILL.md",
       "action": "copy",
       "sources": [
         "core/skills/gh-issue/SKILL.md"
@@ -310,15 +205,6 @@
       "sha256": "f5b43578cd3ff4c32e027e64507a98dd37e54a718d138006a70282e0cd561cc9"
     },
     {
-      "build": "build/codex/skills/i-have-adhd/SKILL.md",
-      "install": "~/.agents/skills/i-have-adhd/SKILL.md",
-      "action": "copy",
-      "sources": [
-        "core/skills/i-have-adhd/SKILL.md"
-      ],
-      "sha256": "f5b43578cd3ff4c32e027e64507a98dd37e54a718d138006a70282e0cd561cc9"
-    },
-    {
       "build": "build/antigravity/skills/i-have-adhd/SKILL.md",
       "install": "~/.gemini/skills/i-have-adhd/SKILL.md",
       "action": "copy",
@@ -330,15 +216,6 @@
     {
       "build": "build/claude/skills/reply-draft/SKILL.md",
       "install": "~/.claude/skills/reply-draft/SKILL.md",
-      "action": "copy",
-      "sources": [
-        "core/skills/reply-draft/SKILL.md"
-      ],
-      "sha256": "039b5d0ba7fd7477b31107e88f37221eaa91c731eb90ee75dd3ed8c649d8fcae"
-    },
-    {
-      "build": "build/codex/skills/reply-draft/SKILL.md",
-      "install": "~/.agents/skills/reply-draft/SKILL.md",
       "action": "copy",
       "sources": [
         "core/skills/reply-draft/SKILL.md"
@@ -364,15 +241,6 @@
       "sha256": "a735affa536306fa1716c855f688f56216e623de1b8ba0462be2f87412aa6449"
     },
     {
-      "build": "build/codex/skills/review-pr/SKILL.md",
-      "install": "~/.agents/skills/review-pr/SKILL.md",
-      "action": "copy",
-      "sources": [
-        "core/skills/review-pr/SKILL.md"
-      ],
-      "sha256": "a735affa536306fa1716c855f688f56216e623de1b8ba0462be2f87412aa6449"
-    },
-    {
       "build": "build/antigravity/skills/review-pr/SKILL.md",
       "install": "~/.gemini/skills/review-pr/SKILL.md",
       "action": "copy",
@@ -384,15 +252,6 @@
     {
       "build": "build/claude/skills/rule-tender/SKILL.md",
       "install": "~/.claude/skills/rule-tender/SKILL.md",
-      "action": "copy",
-      "sources": [
-        "core/skills/rule-tender/SKILL.md"
-      ],
-      "sha256": "49cde4f31657ef30d4a05b07601bdb45bcdb24054be5db08c184dbb92d0304ff"
-    },
-    {
-      "build": "build/codex/skills/rule-tender/SKILL.md",
-      "install": "~/.agents/skills/rule-tender/SKILL.md",
       "action": "copy",
       "sources": [
         "core/skills/rule-tender/SKILL.md"
@@ -418,15 +277,6 @@
       "sha256": "2120a96300664908a51786a3e3c18eb9932c3440ffdf2be5f6a6000bcb74c128"
     },
     {
-      "build": "build/codex/skills/session-recap/SKILL.md",
-      "install": "~/.agents/skills/session-recap/SKILL.md",
-      "action": "copy",
-      "sources": [
-        "core/skills/session-recap/SKILL.md"
-      ],
-      "sha256": "2120a96300664908a51786a3e3c18eb9932c3440ffdf2be5f6a6000bcb74c128"
-    },
-    {
       "build": "build/antigravity/skills/session-recap/SKILL.md",
       "install": "~/.gemini/skills/session-recap/SKILL.md",
       "action": "copy",
@@ -438,15 +288,6 @@
     {
       "build": "build/claude/skills/tutor/SKILL.md",
       "install": "~/.claude/skills/tutor/SKILL.md",
-      "action": "copy",
-      "sources": [
-        "core/skills/tutor/SKILL.md"
-      ],
-      "sha256": "fbb68fb956b1fc134436e042a5fef02a5cfee71f62e904abcc05e9c3cae47c84"
-    },
-    {
-      "build": "build/codex/skills/tutor/SKILL.md",
-      "install": "~/.agents/skills/tutor/SKILL.md",
       "action": "copy",
       "sources": [
         "core/skills/tutor/SKILL.md"
