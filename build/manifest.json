@@ -6,61 +6,36 @@
       "build": "build/claude/CLAUDE.md",
       "install": "~/.claude/CLAUDE.md",
       "action": "copy",
-      "sources": [
-        "core/instructions/base.md",
-        "core/instructions/autonomy.md",
-        "core/instructions/explainability.md",
-        "core/instructions/providers/claude.md"
-      ],
-      "sha256": "36c0271d66426fee1898a63b13073cbed389482b2480954bee432d92da62dfe3"
+      "sources": "core/instructions/base.md",
+      "sha256": "61c21c2d8667915132e654143bb299af3f8b57b318b7fbc6b7a5b04aa2b1598d"
     },
     {
       "build": "build/codex/AGENTS.md",
       "install": "~/.codex/AGENTS.md",
       "action": "copy",
-      "sources": [
-        "core/instructions/base.md",
-        "core/instructions/autonomy.md",
-        "core/instructions/explainability.md",
-        "core/instructions/providers/codex.md"
-      ],
-      "sha256": "507ee8d19587fa7a8c97710961b150ee6d5814f3757100cc088509d03de0cf67"
+      "sources": "core/instructions/base.md",
+      "sha256": "61c21c2d8667915132e654143bb299af3f8b57b318b7fbc6b7a5b04aa2b1598d"
     },
     {
       "build": "build/antigravity/GEMINI.md",
       "install": "~/.gemini/GEMINI.md",
       "action": "copy",
-      "sources": [
-        "core/instructions/base.md",
-        "core/instructions/autonomy.md",
-        "core/instructions/explainability.md",
-        "core/instructions/providers/antigravity.md"
-      ],
-      "sha256": "6d457a537a46e73bc99bc00238eff1c132450198182908a737b559811799f7ae"
+      "sources": "core/instructions/base.md",
+      "sha256": "61c21c2d8667915132e654143bb299af3f8b57b318b7fbc6b7a5b04aa2b1598d"
     },
     {
       "build": "build/opencode/AGENTS.md",
       "install": "~/.config/opencode/AGENTS.md",
       "action": "copy",
-      "sources": [
-        "core/instructions/base.md",
-        "core/instructions/autonomy.md",
-        "core/instructions/explainability.md",
-        "core/instructions/providers/opencode.md"
-      ],
-      "sha256": "d243464651e1c494b7a8fe10cc00bbb3f00179c60ab29056f680504d21fb3dbc"
+      "sources": "core/instructions/base.md",
+      "sha256": "61c21c2d8667915132e654143bb299af3f8b57b318b7fbc6b7a5b04aa2b1598d"
     },
     {
       "build": "build/cursor/mewai.mdc",
       "install": "~/.cursor/rules/mewai.mdc",
       "action": "copy",
-      "sources": [
-        "core/instructions/base.md",
-        "core/instructions/autonomy.md",
-        "core/instructions/explainability.md",
-        "core/instructions/providers/cursor.md"
-      ],
-      "sha256": "5806a0a8a1e1f7d5efbce59029f0da71d35ae09d89e20f05285080f58dd0639c"
+      "sources": "core/instructions/base.md",
+      "sha256": "88e994e3e084a1fa4bd74ff99fddc37e2036bfeb289b2b0274f354053f12f682"
     },
     {
       "build": "build/claude/settings.json",
@@ -413,7 +388,7 @@
       "sources": [
         "core/skills/rule-tender/SKILL.md"
       ],
-      "sha256": "a7e6bc650c23817d25f5d5d87763fae1f297fa65aa902f4b6b550671566c36e0"
+      "sha256": "49cde4f31657ef30d4a05b07601bdb45bcdb24054be5db08c184dbb92d0304ff"
     },
     {
       "build": "build/codex/skills/rule-tender/SKILL.md",
@@ -422,7 +397,7 @@
       "sources": [
         "core/skills/rule-tender/SKILL.md"
       ],
-      "sha256": "a7e6bc650c23817d25f5d5d87763fae1f297fa65aa902f4b6b550671566c36e0"
+      "sha256": "49cde4f31657ef30d4a05b07601bdb45bcdb24054be5db08c184dbb92d0304ff"
     },
     {
       "build": "build/antigravity/skills/rule-tender/SKILL.md",
@@ -431,7 +406,7 @@
       "sources": [
         "core/skills/rule-tender/SKILL.md"
       ],
-      "sha256": "a7e6bc650c23817d25f5d5d87763fae1f297fa65aa902f4b6b550671566c36e0"
+      "sha256": "49cde4f31657ef30d4a05b07601bdb45bcdb24054be5db08c184dbb92d0304ff"
     },
     {
       "build": "build/claude/skills/session-recap/SKILL.md",

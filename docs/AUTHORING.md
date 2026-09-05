@@ -27,7 +27,6 @@ One rule lives in exactly one place. The validator fails the build on duplicates
 | The mistake would recur | Put it in |
 | --- | --- |
 | in any repository, with any provider | `core/instructions/base.md` |
-| only with one provider or its tooling | `core/instructions/providers/<name>.md` |
 | as a command that should be blocked or confirmed | `core/policy/policy.json` |
 | inside one repeatable workflow | that workflow's skill |
 | only in one project | that project's own `AGENTS.md` |
@@ -82,7 +81,7 @@ Beyond that: write imperative steps with explicit inputs and outputs, say what v
 
 ## Adding a policy rule
 
-Every rule needs an `id`, a `decision`, a `why`, and its commands. The `why` is required because it renders into the Codex `justification` field, which is what the agent is shown when the command is blocked. A justification that explains the reason prevents the agent from looking for a way around the rule.
+Every rule needs an `id`, a `decision`, a `why`, and its commands. The `why` is required because it renders into the Cursor hook rule table, which is what the agent is shown when the command is blocked. A justification that explains the reason prevents the agent from looking for a way around the rule.
 
 Choose the decision by what happens if the command runs when it should not have:
 
@@ -92,7 +91,7 @@ Choose the decision by what happens if the command runs when it should not have:
 
 Before adding a `forbid`, check that the prefix actually matches the form you are worried about. See the flag-position and wrapper sections in `PROVIDERS.md`.
 
-`cursor: "omit"` is valid only on `confirm`. It keeps the prompt on Claude Code and OpenCode, and leaves the command out of the Cursor hook so it runs. Forbid cannot use it. Without the field, confirm still renders as Cursor deny.
+`autonomy_omit: true` is valid only on `confirm`. It keeps the prompt on Claude Code, and leaves the command out of the Cursor hook and the Hermes deny list so it runs there. Forbid cannot use it. Without the field, confirm renders as a deny on both autonomous providers.
 
 ## After any change
 

@@ -19,7 +19,6 @@ Instruction files rot in one direction. Every correction adds a bullet, nothing 
    | The mistake would recur | Put the rule in |
    | --- | --- |
    | in any repository, with any provider | `core/instructions/base.md` |
-   | only with one provider or its tooling | `core/instructions/providers/<name>.md` |
    | as a command that should have been blocked or confirmed | `core/policy/policy.json` |
    | inside one repeatable workflow | that workflow's skill |
    | only in one project | that project's own `AGENTS.md` |

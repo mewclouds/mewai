@@ -20,14 +20,7 @@ $InstructionsDir = Join-Path $RepoRoot 'core/instructions'
 # Exceeding a budget is a signal to cut, not to raise the number. Raising one is a
 # decision worth arguing for in a commit message.
 $LineBudgets = @{
-    'base.md'                   = 120
-    'autonomy.md'                = 60
-    'explainability.md'          = 60
-    'providers/claude.md'        = 60
-    'providers/codex.md'         = 60
-    'providers/antigravity.md'   = 60
-    'providers/opencode.md'      = 60
-    'providers/cursor.md'        = 60
+    'base.md' = 80
 }
 $RenderedLineBudget = 400
 
@@ -117,29 +110,20 @@ $styleTargets = @($modules) + @(
 )
 
 # --- style -------------------------------------------------------------------
-# The repository tells agents not to use these. A file that breaks its own rule
-# teaches the agent that the rules are decorative.
+# En dashes, smart quotes, and stray pictographs are paste artifacts rather than
+# authorial choices, so catching them is not a style opinion. Punctuation the
+# author picked on purpose is left alone.
 
 foreach ($module in $styleTargets) {
     $lineNumber = 0
     foreach ($line in $module.Text -split "`n") {
         $lineNumber++
 
-        if ($line -match '—') {
-            Add-Failure "$($module.Relative):${lineNumber}: em dash"
-        }
         if ($line -match '–') {
             Add-Failure "$($module.Relative):${lineNumber}: en dash"
         }
         if ($line -match '[‘’“”]') {
             Add-Failure "$($module.Relative):${lineNumber}: smart quote"
-        }
-        # Semicolons inside code spans are legitimate shell and code syntax.
-        $withoutCode = $line -replace '`[^`]*`', ''
-        # A clause-joining semicolon is followed by a space or ends the line. The
-        # end-of-line case is the common one in a bulleted list.
-        if ($withoutCode -match ';(\s|$)') {
-            Add-Failure "$($module.Relative):${lineNumber}: semicolon joining clauses"
         }
         # \p{So} covers pictographs and dingbats, \p{Cs} covers the surrogate pairs
         # that astral-plane emoji are encoded as in .NET strings.
