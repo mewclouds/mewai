@@ -102,7 +102,7 @@
       "id": "publish-and-share",
       "decision": "confirm",
       "why": "Pushing, publishing, and messaging are visible to other people the moment they run, and approval for one does not carry to the next.",
-      "cursor": "omit",
+      "autonomy_omit": true,
       "commands": [
         "git push",
         "git tag",
@@ -121,7 +121,7 @@
       "id": "dependency-mutation",
       "decision": "confirm",
       "why": "Installing packages runs third-party install scripts and rewrites lockfiles that the rest of the project depends on.",
-      "cursor": "omit",
+      "autonomy_omit": true,
       "commands": [
         "npm install",
         "npm i"

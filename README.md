@@ -2,7 +2,7 @@
 
 This is my workflow for AI-assisted development: one source of truth for agent instructions, command boundaries, and skills, rendered into every provider I use.
 
-Today that's Claude Code, Antigravity CLI (`agy`), and Cursor. When I pick up another, I write one adapter in the renderer instead of maintaining another copy of my rules.
+Today that's Claude Code, Hermes Agent, Antigravity CLI (`agy`), and Cursor. When I pick up another, I write one adapter in the renderer instead of maintaining another copy of my rules.
 
 ## Why I built this
 
@@ -88,4 +88,4 @@ That's a dry run. I add `--confirm` to actually remove them. Everything removed 
 
 - PowerShell 7 for `render` and `validate`. Runs on Windows, Linux, and macOS.
 - `jq` for the shell installer and status script.
-- Nothing else. mewai doesn't install Claude Code, Antigravity CLI, or any model runtime.
+- Nothing else. mewai doesn't install Claude Code, Hermes, Antigravity CLI, or any model runtime.

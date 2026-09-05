@@ -4,26 +4,34 @@ What each provider loads, where mewai puts it, and where they genuinely differ.
 
 ## Rendered targets
 
-| Source | Claude Code | Antigravity | Cursor |
-| --- | --- | --- | --- |
-| `core/instructions/base.md` | `~/.claude/CLAUDE.md` | `~/.gemini/GEMINI.md` | `~/.cursor/rules/mewai.mdc` |
-| `core/policy/policy.json` | `~/.claude/settings.json` (permissions) | not applicable | `~/.cursor/hooks.json` plus `~/.cursor/hooks/` |
-| `core/providers/claude/settings.json` | `~/.claude/settings.json` (everything else) | not applicable | not applicable |
-| `core/providers/claude/statusline-command.sh` | `~/.claude/statusline-command.sh` | not applicable | not applicable |
-| `core/providers/cursor/hooks.json` | not applicable | not applicable | `~/.cursor/hooks.json` |
-| `core/skills/<name>/SKILL.md` | `~/.claude/skills/<name>/SKILL.md` | `~/.gemini/skills/<name>/SKILL.md` | already covered by `~/.claude/skills/` |
+| Source | Claude Code | Hermes | Antigravity | Cursor |
+| --- | --- | --- | --- | --- |
+| `core/instructions/base.md` | `~/.claude/CLAUDE.md` | `$HERMES_HOME/SOUL.md` | `~/.gemini/GEMINI.md` | `~/.cursor/rules/mewai.mdc` |
+| `core/policy/policy.json` | `~/.claude/settings.json` (permissions) | `$HERMES_HOME/config.yaml` (approvals.deny) | not applicable | `~/.cursor/hooks.json` plus `~/.cursor/hooks/` |
+| `core/providers/claude/settings.json` | `~/.claude/settings.json` (everything else) | not applicable | not applicable | not applicable |
+| `core/providers/claude/statusline-command.sh` | `~/.claude/statusline-command.sh` | not applicable | not applicable | not applicable |
+| `core/providers/hermes/config.yaml` | not applicable | `$HERMES_HOME/config.yaml` (everything else) | not applicable | not applicable |
+| `core/providers/cursor/hooks.json` | not applicable | not applicable | not applicable | `~/.cursor/hooks.json` |
+| `core/skills/<name>/SKILL.md` | `~/.claude/skills/<name>/SKILL.md` | `~/.agents/skills/<name>/SKILL.md` | `~/.gemini/skills/<name>/SKILL.md` | already covered by `~/.claude/skills/` |
 
-Every provider receives byte-identical instruction content. Only the filename, the install path, and Cursor's `alwaysApply` front matter differ. There are no per-provider instruction modules, so a rule that cannot be stated for all three does not belong in the instructions at all.
+Every provider receives byte-identical instruction content. Only the filename, the install path, and Cursor's `alwaysApply` front matter differ. There are no per-provider instruction modules, so a rule that cannot be stated for all four does not belong in the instructions at all.
+
+`$HERMES_HOME` is `%LOCALAPPDATA%\hermes` on Windows native, which is what the manifest targets, and `~/.hermes` on Linux and macOS. See "Hermes home is not `~/.hermes` on Windows" below.
 
 Antigravity gets instructions and skills, nothing else. `policy.json` is not applicable there. See "Antigravity does not get rendered permissions" below for why.
 
-Cursor gets no skill copy of its own, because it already scans `~/.claude/skills/`, which the Claude Code row installs. Rendering another copy would create the exact duplication this repository exists to remove. Do not install a third tree under `~/.cursor/skills/`.
+Cursor gets no skill copy of its own, because it already scans `~/.claude/skills/` and `~/.agents/skills/`, both of which another row installs. Rendering a third copy would create the exact duplication this repository exists to remove. Do not install a tree under `~/.cursor/skills/`.
 
-Skills are byte-identical across both locations. That is the whole point: they were maintained as separate files before, and one drifted.
+One consequence: Cursor sees every skill twice. It deduplicates by name, so the loaded content is correct. This cost was accepted before and nothing about the Hermes row changes it.
+
+Skills are byte-identical across all three locations. That is the whole point: they were maintained as separate files before, and one drifted.
+
+Claude Code cannot read `~/.agents/skills` and Antigravity cannot read either of the other two, so a single shared tree is not reachable without symlinks, which need Developer Mode or admin on Windows and are not available on this machine. `core/skills/` is the single source regardless. Every install root is a disposable copy, and dropping a provider drops its tree with it.
 
 ## Invocation
 
 - Claude Code: `/code-review`
+- Hermes: `/code-review`
 - Antigravity: `/code-review`
 - Cursor: `/code-review`
 
@@ -31,11 +39,11 @@ Claude Code also selects skills automatically from their descriptions, which is 
 
 ## How the three decisions map
 
-| policy.json | Claude Code | Cursor |
-| --- | --- | --- |
-| `allow` | `permissions.allow` | no hook, `Run Everything` default |
-| `confirm` | `permissions.ask` | hook `deny` unless the rule sets `cursor: "omit"`, in which case it runs |
-| `forbid` | `permissions.deny` | hook `deny`, no handoff |
+| policy.json | Claude Code | Hermes | Cursor |
+| --- | --- | --- | --- |
+| `allow` | `permissions.allow` | no rule, Hermes only prompts on its own dangerous patterns | no hook, `Run Everything` default |
+| `confirm` | `permissions.ask` | `approvals.deny` unless the rule sets `autonomy_omit`, in which case it runs | hook `deny` unless the rule sets `autonomy_omit`, in which case it runs |
+| `forbid` | `permissions.deny` | `approvals.deny` | hook `deny`, no handoff |
 
 Antigravity has no column here. It does not render any of the three decisions.
 
@@ -45,7 +53,7 @@ Claude Code is the only provider that expresses all three as intended. `deny` an
 
 ### Cursor maps confirm to deny
 
-Cursor hooks document `allow`, `deny`, and `ask`. `ask` is a known no-op in `Run Everything`, which is the autonomy mode mewai targets, so a `confirm` rule that emitted `ask` would just run. mewai therefore renders confirm as deny and tells the agent to give the user the exact command, unless the rule sets `cursor: "omit"`. That field drops the rule from the hook so Cursor stays autonomous while Claude Code still prompts. Forbid is also deny, with a stop message that does not hand the command over. `cursor: "omit"` is illegal on forbid.
+Cursor hooks document `allow`, `deny`, and `ask`. `ask` is a known no-op in `Run Everything`, which is the autonomy mode mewai targets, so a `confirm` rule that emitted `ask` would just run. mewai therefore renders confirm as deny and tells the agent to give the user the exact command, unless the rule sets `autonomy_omit`. That field drops the rule from the hook so Cursor stays autonomous while Claude Code still prompts. Forbid is also deny, with a stop message that does not hand the command over. `autonomy_omit` is illegal on forbid.
 
 The hook is the hard stop. `failClosed` is set so a crashed or missing matcher blocks rather than fails open. Unlisted commands are allowed, because `Run Everything` is permissive by default with explicit exceptions.
 
@@ -59,7 +67,28 @@ mewai owns `~/.cursor/hooks.json`. Other user hooks in that file are overwritten
 
 Cloud Agents do not load `~/.cursor/` user hooks or user skills. They only see project files in the repository.
 
+### Hermes has no ask tier
+
+`approvals.mode` is `smart`, `manual`, or `off`. None of them is a per-command prompt: `smart` asks an auxiliary LLM to judge risk, `manual` prompts on Hermes' own dangerous-pattern list, and `off` is persistent yolo. A `git commit` is not on that list, so a `confirm` rule that rendered nothing would simply run.
+
+`approvals.deny` is the one boundary that holds. It is a list of case-insensitive fnmatch globs matched against the whole command string, and a match blocks unconditionally, checked before `--yolo`, `/yolo`, and `approvals.mode: off`. That is the same guarantee Claude Code gives with deny under `bypassPermissions`.
+
+So mewai renders both `forbid` and `confirm` into `approvals.deny`, the same decision Cursor forced, and for the same reason. `autonomy_omit` drops a confirm rule from both.
+
+Because the match runs against the whole command string, a pattern needs no leading-wildcard variant to survive a wrapper: `*git push --force*` already catches `rtk git push --force`. Hermes also matches over the same deobfuscated variants its dangerous-pattern detector uses, so quoting tricks do not slip past.
+
+Two gaps worth knowing. `approvals.deny` applies to shell commands on host-reaching backends only, so an isolated container backend skips the guard stack entirely. And it does not cover Hermes' own non-shell tools: `read_file` is workspace-scoped on its own, and `write_file` and `patch` refuse `~/.ssh`, `~/.aws`, and `~/.kube`, but the terminal tool runs as the same OS user. The rendered `secret-files` read paths are therefore emitted as command globs, anchored on a path separator or on the whitespace that starts an argument, so `*/.env*` does not also block `--env` and `environment`.
+
+### Hermes home is not `~/.hermes` on Windows
+
+The Hermes documentation describes `~/.hermes/`. On a Windows native install that is wrong: `HERMES_HOME` is set to `%LOCALAPPDATA%\hermes`, and `hermes config path` confirms it. The manifest targets `~/AppData/Local/hermes/`.
+
+That path is hardcoded rather than resolved from `$env:HERMES_HOME` at render time, because rendering has to be pure. The same `core/` must produce byte-identical `build/` output on every machine, and CI depends on it. Resolving an environment variable during render would make the manifest machine-specific and break that.
+
+The cost is that a Linux, macOS, or WSL2 install of Hermes reads `~/.hermes/` and would need the two paths in the provider row and the config target changed. There is one install of Hermes here and it is Windows native, so this is a known limitation rather than a bug.
+
 ### Flag position
+
 
 Claude Code matches commands by prefix. `git push --force` matches when `--force` is the third word. It does not match `git push origin main --force`, where the flag is fifth.
 
@@ -93,9 +122,15 @@ Nothing in the rendered instruction file states this any more. Per-provider inst
 
 Claude Code settings are the only thing `reverse` handles now. It was written for three providers whose config files they each wrote to themselves.
 
+`$HERMES_HOME/config.yaml` is written by Hermes itself. Approving a command with "always" appends it to `command_allowlist`, and `hermes config set` writes there too, so both show up in `status` as drift. `reverse` strips the generated block by its marker lines and writes the rest back to `core/providers/hermes/config.yaml`. That is a text operation on purpose: PowerShell has no built-in YAML parser, and a hand-rolled one would be a worse dependency than a pair of comment lines. `reverse` refuses outright when the installed file carries no marker, rather than writing generated rules back into source.
+
+`$HERMES_HOME/SOUL.md` is fully owned by mewai and is overwritten on install. Hermes ships its own identity text there. Installing replaces it with the shared instructions, which open with "You are an agent" rather than naming Hermes.
+
+`$HERMES_HOME/.env`, `auth.json`, `memories/`, `cron/`, `sessions/`, and the caches are never read or written.
+
 `~/.gemini/antigravity-cli/settings.json` is not managed by mewai at all, for the reasons in "Antigravity does not get rendered permissions" above. Its `toolPermission`, `trustedWorkspaces`, `model`, and every other field are entirely yours to set, and mewai will not overwrite or report drift on any of it. `status` never lists this file, because it is not in the manifest.
 
-Nothing else in `~/.claude`, `~/.gemini`, or `~/.cursor` is managed either. Credentials, sessions, history, caches, plugin state, and SQLite databases are never read or written.
+Nothing else in `~/.claude`, `$HERMES_HOME`, `~/.gemini`, or `~/.cursor` is managed either. Credentials, sessions, history, caches, plugin state, and SQLite databases are never read or written.
 
 ## Verification
 
@@ -113,5 +148,21 @@ Cursor hook matching is checked offline in `validate.ps1` by piping JSON into th
 | `read ~/.ssh/config` | blocked |
 
 Cursor watches `hooks.json` and reloads on save. If a hook still does not fire, restart Cursor. Check Customize > Hooks, and the Hooks output channel. Daily use is `Run Everything` under Settings > Agents > Approvals & Execution. Auto-review is not the enforcement path.
+
+Hermes is checked statically. `validate.ps1` fails the build if the base config declares its own `approvals` key, which would be a duplicate YAML key; if a `forbid` or non-omitted `confirm` command rendered no deny pattern; if an `autonomy_omit` rule rendered one anyway; or if any pattern lost its surrounding wildcards. Both the duplicate-key check and the coverage check were confirmed by breaking them on purpose and watching the build fail.
+
+What that does not prove is enforcement. Confirm by hand in a disposable directory, with `--yolo` on, since the point is that these hold anyway:
+
+| Command | Expected |
+| --- | --- |
+| `hermes chat --yolo -q "run git status"` | runs |
+| `hermes chat --yolo -q "run git push --force"` | blocked |
+| `hermes chat --yolo -q "run rtk git push --force"` | blocked, the wrapper cannot launder it |
+| `hermes chat --yolo -q "run git push origin main --force"` | blocked, the flag is fifth |
+| `hermes chat --yolo -q "run git commit -m test"` | blocked, confirm renders as deny |
+| `hermes chat --yolo -q "run gh pr create --title test"` | runs. autonomy_omit, not in the deny list |
+| `hermes chat --yolo -q "read ~/.ssh/config"` | blocked |
+
+Deny changes take effect immediately, no restart needed. Skill discovery is checked with `hermes skills list`, which should show the thirteen mewai skills resolved under `~/.agents/skills`.
 
 Every check in `validate.ps1` runs without an external binary, so nothing reports as skipped. When a provider needing one is added, report it as skipped rather than passing. An unverifiable check must never look like a passing one.

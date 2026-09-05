@@ -91,7 +91,7 @@ Choose the decision by what happens if the command runs when it should not have:
 
 Before adding a `forbid`, check that the prefix actually matches the form you are worried about. See the flag-position and wrapper sections in `PROVIDERS.md`.
 
-`cursor: "omit"` is valid only on `confirm`. It keeps the prompt on Claude Code, and leaves the command out of the Cursor hook so it runs. Forbid cannot use it. Without the field, confirm still renders as Cursor deny.
+`autonomy_omit: true` is valid only on `confirm`. It keeps the prompt on Claude Code, and leaves the command out of the Cursor hook and the Hermes deny list so it runs there. Forbid cannot use it. Without the field, confirm renders as a deny on both autonomous providers.
 
 ## After any change
 
