@@ -1,7 +1,6 @@
 ---
 name: i-have-adhd
 description: Shape output for a reader with ADHD by leading with the next action, numbering multi-step work, restating state across turns, suppressing tangents, and making wins visible. Use when explicitly invoked with /i-have-adhd or $i-have-adhd.
-disable-model-invocation: true
 license: MIT
 metadata:
   tags: "ADHD, Output Style, Productivity, Formatting"
