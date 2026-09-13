@@ -21,6 +21,7 @@ Turns a raw GitHub issue into something a non-technical reporter and the user ca
 4. Investigate root cause by searching the codebase for the described behavior. A miss in the codebase is never proof the cause isn't there: also search the web for the error text, symptom, or repo name, since upstream bugs and prior discussion often explain what a local search alone misses.
 5. If the report is vague, missing repro steps, or the evidence points more than one way, stop and say exactly what's missing. Propose a way to test a hypothesis rather than asserting one. Prefer a back-and-forth over jumping to a conclusion.
 6. State a cause as confirmed only when something backs it: a reproduced behavior, a matching code path, a corroborating report. Otherwise state it as a labeled hypothesis, not a fix.
+7. Format the output adhering to the rules in `/i-have-adhd` to keep the triage focused and actionable.
 
 ## Output
 
