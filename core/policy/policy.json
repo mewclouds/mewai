@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "note": "Single source for command boundaries. Rendered into Claude Code permission rules and the Cursor hook rule table. Edit this file, then run scripts/render.ps1.",
+  "note": "Single source for command boundaries. Rendered into Claude Code permissions, Codex execpolicy rules, Hermes approvals, and the Cursor hook rule table. Edit this file, then run scripts/render.ps1.",
   "decisions": {
     "allow": "Runs without a prompt. Reserved for commands that cannot change state.",
     "confirm": "Prompts every time. Survives bypassPermissions in Claude Code.",

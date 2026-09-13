@@ -4,9 +4,10 @@
     Pulls locally modified settings into core/ and re-renders.
 
 .DESCRIPTION
-    Reverse of install: reads the installed provider settings file
-    (~/.claude/settings.json), strips any generated policy permissions, and writes
-    the user settings back into core/providers/.
+    Reverse of install: reads installed provider settings files
+    (~/.claude/settings.json, ~/.codex/config.toml, and Hermes config.yaml),
+    strips any generated policy permissions, and writes the user settings back into
+    core/providers/.
 
     Only settings files are reversed. Skills, instructions, and policy rules are
     never reversed.
@@ -100,6 +101,29 @@ if (Test-Path $claudeInstalled) {
         else {
             Write-Utf8NoBom -Path $claudeCore -Content $claudeJson
             Write-Host "reversed ~/.claude/settings.json -> core/providers/claude/settings.json"
+        }
+        $reversedCount++
+    }
+}
+
+# --- codex config ------------------------------------------------------------
+$codexInstalled = Join-Path $HomeDir '.codex/config.toml'
+$codexBuild = Join-Path $BuildDir 'codex/config.toml'
+$codexCore = Join-Path $CoreDir 'providers/codex/config.toml'
+
+if (Test-Path $codexInstalled) {
+    $installedSha = Get-FileSha256 -Path $codexInstalled
+    $buildSha = Get-FileSha256 -Path $codexBuild
+
+    if ($installedSha -ne $buildSha) {
+        $content = Get-Content -Path $codexInstalled -Raw
+
+        if ($DryRun) {
+            Write-Host "would reverse ~/.codex/config.toml -> core/providers/codex/config.toml"
+        }
+        else {
+            Write-Utf8NoBom -Path $codexCore -Content $content
+            Write-Host "reversed ~/.codex/config.toml -> core/providers/codex/config.toml"
         }
         $reversedCount++
     }

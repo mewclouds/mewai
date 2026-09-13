@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Pulls locally modified settings into core/ and re-renders.
 #
-# Reverse of install: reads the installed provider settings file
-# (~/.claude/settings.json), strips any generated policy permissions, and writes
-# the user settings back into core/providers/.
+# Reverse of install: reads installed provider settings files
+# (~/.claude/settings.json, ~/.codex/config.toml, and Hermes config.yaml),
+# strips any generated policy permissions, and writes the user settings back into
+# core/providers/.
 #
 # Only settings files are reversed. Skills, instructions, and policy rules are
 # never reversed.
@@ -75,6 +76,29 @@ if [[ -f "$claude_installed" ]]; then
       ' "$claude_installed" | tr -d '\r' > "$temp_out"
       mv "$temp_out" "$claude_core"
       printf 'reversed ~/.claude/settings.json -> core/providers/claude/settings.json\n'
+    fi
+    reversed_count=$((reversed_count + 1))
+  fi
+fi
+
+# --- codex config ------------------------------------------------------------
+codex_installed="$HOME/.codex/config.toml"
+codex_build="$repo_root/build/codex/config.toml"
+codex_core="$repo_root/core/providers/codex/config.toml"
+
+if [[ -f "$codex_installed" ]]; then
+  installed_sha="$(sha_of "$codex_installed")"
+  build_sha=""
+  if [[ -f "$codex_build" ]]; then
+    build_sha="$(sha_of "$codex_build")"
+  fi
+
+  if [[ "$installed_sha" != "$build_sha" ]]; then
+    if "$dry_run"; then
+      printf 'would reverse ~/.codex/config.toml -> core/providers/codex/config.toml\n'
+    else
+      tr -d '\r' < "$codex_installed" > "$codex_core"
+      printf 'reversed ~/.codex/config.toml -> core/providers/codex/config.toml\n'
     fi
     reversed_count=$((reversed_count + 1))
   fi

@@ -4,15 +4,16 @@ What each provider loads, where mewai puts it, and where they genuinely differ.
 
 ## Rendered targets
 
-| Source | Claude Code | Hermes | Antigravity | Cursor |
-| --- | --- | --- | --- | --- |
-| `core/instructions/base.md` | `~/.claude/CLAUDE.md` | `$HERMES_HOME/SOUL.md` | `~/.gemini/GEMINI.md` | `~/.cursor/rules/mewai.mdc` |
-| `core/policy/policy.json` | `~/.claude/settings.json` (permissions) | `$HERMES_HOME/config.yaml` (approvals.deny) | not applicable | `~/.cursor/hooks.json` plus `~/.cursor/hooks/` |
-| `core/providers/claude/settings.json` | `~/.claude/settings.json` (everything else) | not applicable | not applicable | not applicable |
-| `core/providers/claude/statusline-command.sh` | `~/.claude/statusline-command.sh` | not applicable | not applicable | not applicable |
-| `core/providers/hermes/config.yaml` | not applicable | `$HERMES_HOME/config.yaml` (everything else) | not applicable | not applicable |
-| `core/providers/cursor/hooks.json` | not applicable | not applicable | not applicable | `~/.cursor/hooks.json` |
-| `core/skills/<name>/SKILL.md` | `~/.claude/skills/<name>/SKILL.md` | `~/.agents/skills/<name>/SKILL.md` | `~/.gemini/skills/<name>/SKILL.md` | already covered by `~/.claude/skills/` |
+| Source | Claude Code | Codex | Hermes | Antigravity | Cursor |
+| --- | --- | --- | --- | --- | --- |
+| `core/instructions/base.md` | `~/.claude/CLAUDE.md` | `~/.codex/AGENTS.md` | `$HERMES_HOME/SOUL.md` | `~/.gemini/GEMINI.md` | `~/.cursor/rules/mewai.mdc` |
+| `core/policy/policy.json` | `~/.claude/settings.json` (permissions) | `~/.codex/rules/default.rules` | `$HERMES_HOME/config.yaml` (approvals.deny) | not applicable | `~/.cursor/hooks.json` plus `~/.cursor/hooks/` |
+| `core/providers/claude/settings.json` | `~/.claude/settings.json` (everything else) | not applicable | not applicable | not applicable | not applicable |
+| `core/providers/claude/statusline-command.sh` | `~/.claude/statusline-command.sh` | not applicable | not applicable | not applicable | not applicable |
+| `core/providers/codex/config.toml` | not applicable | `~/.codex/config.toml` | not applicable | not applicable | not applicable |
+| `core/providers/hermes/config.yaml` | not applicable | not applicable | `$HERMES_HOME/config.yaml` (everything else) | not applicable | not applicable |
+| `core/providers/cursor/hooks.json` | not applicable | not applicable | not applicable | not applicable | `~/.cursor/hooks.json` |
+| `core/skills/<name>/SKILL.md` | `~/.claude/skills/<name>/SKILL.md` | already covered by `~/.agents/skills/` | `~/.agents/skills/<name>/SKILL.md` | `~/.gemini/skills/<name>/SKILL.md` | already covered by `~/.claude/skills/` |
 
 Every provider receives byte-identical instruction content. Only the filename, the install path, and Cursor's `alwaysApply` front matter differ. There are no per-provider instruction modules, so a rule that cannot be stated for all four does not belong in the instructions at all.
 
@@ -20,7 +21,7 @@ Every provider receives byte-identical instruction content. Only the filename, t
 
 Antigravity gets instructions and skills, nothing else. `policy.json` is not applicable there. See "Antigravity does not get rendered permissions" below for why.
 
-Cursor gets no skill copy of its own, because it already scans `~/.claude/skills/` and `~/.agents/skills/`, both of which another row installs. Rendering a third copy would create the exact duplication this repository exists to remove. Do not install a tree under `~/.cursor/skills/`.
+Cursor and Codex get no skill copy of their own, because they already scan `~/.agents/skills/`, which the Hermes row installs. Rendering another copy would create the exact duplication this repository exists to remove. Do not install a tree under `~/.cursor/skills/` or `~/.codex/skills/`.
 
 One consequence: Cursor sees every skill twice. It deduplicates by name, so the loaded content is correct. This cost was accepted before and nothing about the Hermes row changes it.
 
@@ -31,23 +32,24 @@ Claude Code cannot read `~/.agents/skills` and Antigravity cannot read either of
 ## Invocation
 
 - Claude Code: `/code-review`
+- Codex: `$code-review`
 - Hermes: `/code-review`
 - Antigravity: `/code-review`
 - Cursor: `/code-review`
 
-Claude Code also selects skills automatically from their descriptions, which is why every skill description states when to use it. A description without a trigger fails validation.
+Codex and Claude Code also select skills automatically from their descriptions, which is why every skill description states when to use it. A description without a trigger fails validation.
 
 ## How the three decisions map
 
-| policy.json | Claude Code | Hermes | Cursor |
-| --- | --- | --- | --- |
-| `allow` | `permissions.allow` | no rule, Hermes only prompts on its own dangerous patterns | no hook, `Run Everything` default |
-| `confirm` | `permissions.ask` | `approvals.deny` unless the rule sets `autonomy_omit`, in which case it runs | hook `deny` unless the rule sets `autonomy_omit`, in which case it runs |
-| `forbid` | `permissions.deny` | `approvals.deny` | hook `deny`, no handoff |
+| policy.json | Claude Code | Codex | Hermes | Cursor |
+| --- | --- | --- | --- | --- |
+| `allow` | `permissions.allow` | `prefix_rule(decision="allow")` | no rule, Hermes only prompts on its own dangerous patterns | no hook, `Run Everything` default |
+| `confirm` | `permissions.ask` | `prefix_rule(decision="prompt")` | `approvals.deny` unless the rule sets `autonomy_omit`, in which case it runs | hook `deny` unless the rule sets `autonomy_omit`, in which case it runs |
+| `forbid` | `permissions.deny` | `prefix_rule(decision="forbidden")` | `approvals.deny` | hook `deny`, no handoff |
 
 Antigravity has no column here. It does not render any of the three decisions.
 
-Claude Code is the only provider that expresses all three as intended. `deny` and `ask` rules apply in every Claude Code permission mode, including `bypassPermissions`. `allow` rules do nothing in that mode. That is what makes full autonomy compatible with real boundaries: the mode removes prompts, the rules keep the hard stops.
+Claude Code and Codex are the providers that express all three as intended. `deny` and `ask` rules apply in every Claude Code permission mode, including `bypassPermissions`. `allow` rules do nothing in that mode. That is what makes full autonomy compatible with real boundaries: the mode removes prompts, the rules keep the hard stops. On Codex, `forbidden > prompt > allow` is enforced natively by `execpolicy`.
 
 ## Where the providers differ
 
@@ -122,6 +124,14 @@ mewai closes this by emitting a leading-wildcard variant for every restricting r
 
 Claude Code matches `Bash(...)` and `PowerShell(...)` rules separately. On Windows the agent can reach the same `git` binary through either shell, so mewai emits both variants for every command. A rule covering only one shell is a gap, not a rule.
 
+### Codex expresses all three decisions natively
+
+Codex `execpolicy` rules are written in Starlark in `~/.codex/rules/default.rules`. Its `prefix_rule` supports `decision = "allow"`, `decision = "prompt"`, and `decision = "forbidden"`.
+
+The precedence is strictly `forbidden > prompt > allow`. With `approval_policy = "on-request"` and `approvals_reviewer = "user"` in `~/.codex/config.toml`, routine workspace actions and `allow` rules run unprompted, `prompt` rules trigger terminal confirmation from the user, and `forbidden` rules are hard-denied.
+
+Like Claude Code, `prefix_rule` matches prefixes of command tokens. Flags placed after arguments (e.g. `git push origin main --force`) require prefix matches or normalization.
+
 ### Antigravity does not get rendered permissions
 
 An earlier version of this repo rendered `policy.json` into `~/.gemini/antigravity-cli/settings.json` using a `command(target)` / `read_file(target)` syntax. That worked, confirmed by hand: a `command()` deny rule blocked a real `rm -rf`, and a `read_file()` deny rule blocked a real `.env` read, both with an explicit "matches user-configured deny rule" message naming the rule, not the model choosing to decline, but it only worked under `toolPermission: "proceed-in-sandbox"`. Two other modes were tested and rejected: `always-proceed` bypasses the whole rules list, including deny; and `request-review` auto-denies everything, including allow-listed commands, in non-interactive use.
@@ -134,9 +144,9 @@ Nothing in the rendered instruction file states this any more. Per-provider inst
 
 ## Machine-local state
 
-`~/.claude/settings.json` changes when options are set from the Claude Code CLI, so a new option shows up in `status` as drift. Running `reverse` pulls those settings into `core/providers/` while leaving policy rules untouched, then re-renders and installs. It drops the generated permission block on the way in, so rendered output can never be laundered back into source.
+`~/.codex/config.toml` is rendered from `core/providers/codex/config.toml`, which includes project trust entries. Codex writes to that file itself when you trust a project interactively, which shows up in `status` as drift. Fold it into the source file with `scripts/reverse.ps1` (or `scripts/reverse.sh`) when you want it on every machine, or reinstall to discard it.
 
-Claude Code settings are the only thing `reverse` handles now. It was written for three providers whose config files they each wrote to themselves.
+`~/.claude/settings.json` changes when options are set from the Claude Code CLI, so a new option shows up in `status` as drift. Running `reverse` pulls those settings into `core/providers/` while leaving policy rules untouched, then re-renders and installs. It drops the generated permission block on the way in, so rendered output can never be laundered back into source.
 
 `$HERMES_HOME/config.yaml` is written by Hermes itself. Approving a command with "always" appends it to `command_allowlist`, and `hermes config set` writes there too, so both show up in `status` as drift. `reverse` strips the generated block by its marker lines and writes the rest back to `core/providers/hermes/config.yaml`. That is a text operation on purpose: PowerShell has no built-in YAML parser, and a hand-rolled one would be a worse dependency than a pair of comment lines. `reverse` refuses outright when the installed file carries no marker, rather than writing generated rules back into source.
 
@@ -181,4 +191,4 @@ What that does not prove is enforcement. Confirm by hand in a disposable directo
 
 Deny changes take effect immediately, no restart needed. Skill discovery is checked with `hermes skills list`, which should show the thirteen mewai skills resolved under `~/.agents/skills`.
 
-Every check in `validate.ps1` runs without an external binary, so nothing reports as skipped. When a provider needing one is added, report it as skipped rather than passing. An unverifiable check must never look like a passing one.
+Codex `execpolicy` assertions in `validate.ps1` run only when `codex` is on PATH and executable. When it is not, validation reports them as skipped rather than passed. An unverifiable check must never look like a passing one.

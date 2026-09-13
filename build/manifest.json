@@ -17,6 +17,13 @@
       "sha256": "61c21c2d8667915132e654143bb299af3f8b57b318b7fbc6b7a5b04aa2b1598d"
     },
     {
+      "build": "build/codex/AGENTS.md",
+      "install": "~/.codex/AGENTS.md",
+      "action": "copy",
+      "sources": "core/instructions/base.md",
+      "sha256": "61c21c2d8667915132e654143bb299af3f8b57b318b7fbc6b7a5b04aa2b1598d"
+    },
+    {
       "build": "build/hermes/SOUL.md",
       "install": "~/AppData/Local/hermes/SOUL.md",
       "action": "copy",
@@ -48,6 +55,24 @@
         "core/providers/claude/statusline-command.sh"
       ],
       "sha256": "7897215768dd0c7794e12dd408b9a292e2e1d728d9c0ef8c387f72e40da8279e"
+    },
+    {
+      "build": "build/codex/rules/default.rules",
+      "install": "~/.codex/rules/default.rules",
+      "action": "copy",
+      "sources": [
+        "core/policy/policy.json"
+      ],
+      "sha256": "90824e19a783d56cf6319a04a755c4eff2123b335a98a52bed57c09374440dd5"
+    },
+    {
+      "build": "build/codex/config.toml",
+      "install": "~/.codex/config.toml",
+      "action": "copy",
+      "sources": [
+        "core/providers/codex/config.toml"
+      ],
+      "sha256": "721d89e92c9d14db4e4e2995b258f37d9094d60d467bc14098c71d5d7a99a485"
     },
     {
       "build": "build/hermes/hooks/mewai-hook.ps1",
