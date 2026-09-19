@@ -36,5 +36,3 @@ Every rule needs `id`, `decision`, `why`, and commands.
 
 - Visible to other people, or annoying to undo: `confirm`
 - Unrecoverable, or destroys work: `forbid`
-
-`autonomy_omit: true` is valid only on `confirm`. It keeps the OpenCode prompt and drops the rule from Hermes so Hermes stays autonomous.

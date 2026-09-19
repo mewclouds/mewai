@@ -47,7 +47,6 @@
       "id": "publish-and-share",
       "decision": "confirm",
       "why": "Opening, merging, and closing work on GitHub is visible to other people the moment it runs, and approval for one does not carry to the next.",
-      "autonomy_omit": true,
       "commands": [
         "gh pr create",
         "gh pr merge",
@@ -74,7 +73,7 @@
         "~/.codex/auth.json",
         "~/.claude/.credentials.json"
       ],
-      "why_read_paths": "A file-read boundary, not a command boundary, which is why the commands array is empty. OpenCode renders these as permission.read entries. The Hermes hook matches them before a read."
+      "why_read_paths": "A file-read boundary, not a command boundary, which is why the commands array is empty. OpenCode renders these as permission.read entries."
     }
   ]
 }

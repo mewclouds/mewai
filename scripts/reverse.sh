@@ -81,39 +81,6 @@ if [[ -f "$opencode_installed" ]]; then
   fi
 fi
 
-# --- hermes config -----------------------------------------------------------
-# The generated approvals block is delimited by markers, so stripping it needs no
-# YAML parser in either language. sed deletes through the end marker and awk drops
-# the blank line that followed it.
-hermes_installed="$HOME/AppData/Local/hermes/config.yaml"
-hermes_build="$repo_root/build/hermes/config.yaml"
-hermes_core="$repo_root/core/providers/hermes/config.yaml"
-
-if [[ -f "$hermes_installed" ]]; then
-  installed_sha="$(sha_of "$hermes_installed")"
-  build_sha=""
-  if [[ -f "$hermes_build" ]]; then
-    build_sha="$(sha_of "$hermes_build")"
-  fi
-
-  if [[ "$installed_sha" != "$build_sha" ]]; then
-    if ! grep -qF '# --- end generated ---' "$hermes_installed"; then
-      printf 'error: %s has no mewai generated block. Reinstall before reversing, otherwise the generated rules would be written back into source.\n' "$hermes_installed" >&2
-      exit 1
-    fi
-
-    if "$dry_run"; then
-      printf 'would reverse ~/AppData/Local/hermes/config.yaml -> core/providers/hermes/config.yaml\n'
-    else
-      temp_out="$(mktemp)"
-      sed '1,/^# --- end generated ---$/d' "$hermes_installed" | tr -d '\r' > "$temp_out"
-      mv "$temp_out" "$hermes_core"
-      printf 'reversed ~/AppData/Local/hermes/config.yaml -> core/providers/hermes/config.yaml\n'
-    fi
-    reversed_count=$((reversed_count + 1))
-  fi
-fi
-
 # --- finalize ----------------------------------------------------------------
 if [[ $reversed_count -eq 0 ]]; then
   printf 'all settings are in sync with core/\n'

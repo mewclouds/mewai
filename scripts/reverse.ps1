@@ -89,41 +89,6 @@ if (Test-Path $openCodeInstalled) {
     }
 }
 
-# --- hermes config -----------------------------------------------------------
-# The generated approvals block is delimited by markers, so stripping it is a text
-# operation. That is deliberate: PowerShell has no built-in YAML parser, and a
-# hand-rolled one would be a worse dependency than a pair of comment lines.
-$hermesInstalled = Join-Path $HomeDir 'AppData/Local/hermes/config.yaml'
-$hermesBuild = Join-Path $BuildDir 'hermes/config.yaml'
-$hermesCore = Join-Path $CoreDir 'providers/hermes/config.yaml'
-
-if (Test-Path $hermesInstalled) {
-    $installedSha = Get-FileSha256 -Path $hermesInstalled
-    $buildSha = Get-FileSha256 -Path $hermesBuild
-
-    if ($installedSha -ne $buildSha) {
-        $text = (Get-Content -Path $hermesInstalled -Raw) -replace "`r`n", "`n"
-        $endMarker = '# --- end generated ---'
-        $markerIndex = $text.IndexOf($endMarker)
-
-        if ($markerIndex -lt 0) {
-            Write-Host "error: $hermesInstalled has no mewai generated block. Reinstall before reversing, otherwise the generated rules would be written back into source."
-            exit 1
-        }
-
-        $stripped = $text.Substring($markerIndex + $endMarker.Length).TrimStart("`n")
-
-        if ($DryRun) {
-            Write-Host "would reverse ~/AppData/Local/hermes/config.yaml -> core/providers/hermes/config.yaml"
-        }
-        else {
-            Write-Utf8NoBom -Path $hermesCore -Content $stripped
-            Write-Host "reversed ~/AppData/Local/hermes/config.yaml -> core/providers/hermes/config.yaml"
-        }
-        $reversedCount++
-    }
-}
-
 # --- finalize ----------------------------------------------------------------
 if ($reversedCount -eq 0) {
     Write-Host 'all settings are in sync with core/'

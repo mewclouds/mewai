@@ -35,19 +35,13 @@ $Providers = @(
         Name               = 'opencode'
         InstructionFile    = 'AGENTS.md'
         InstructionInstall = '~/.config/opencode/AGENTS.md'
-        SkillsInstallRoot  = $null
+        SkillsInstallRoot  = '~/.agents/skills'
     },
     @{
         Name               = 'antigravity'
         InstructionFile    = 'GEMINI.md'
         InstructionInstall = '~/.gemini/GEMINI.md'
         SkillsInstallRoot  = '~/.gemini/skills'
-    },
-    @{
-        Name               = 'hermes'
-        InstructionFile    = 'SOUL.md'
-        InstructionInstall = '~/AppData/Local/hermes/SOUL.md'
-        SkillsInstallRoot  = '~/.agents/skills'
     }
 )
 
@@ -102,14 +96,6 @@ function Get-Policy {
         if ([string]::IsNullOrWhiteSpace($rule.why)) {
             throw "rule '$($rule.id)' has no 'why'. Every boundary states its reason."
         }
-        if ($rule.PSObject.Properties.Name -contains 'autonomy_omit') {
-            if ($rule.autonomy_omit -isnot [bool]) {
-                throw "rule '$($rule.id)': autonomy_omit must be true or false."
-            }
-            if ($rule.autonomy_omit -and $rule.decision -ne 'confirm') {
-                throw "rule '$($rule.id)': autonomy_omit is only valid on confirm. A forbid rule cannot be dropped from a provider that runs autonomously."
-            }
-        }
     }
     $policy
 }
@@ -147,8 +133,6 @@ function New-OpenCodeSettings {
         the emitted object is part of the meaning. Ask first, deny last. There
         is one bash matcher. Unmatched commands fall through to OpenCode's default
         of allow.
-
-        confirm renders as ask. autonomy_omit is for Hermes, not here.
     #>
     param([object]$Policy)
 
@@ -219,137 +203,6 @@ function New-OpenCodeSettings {
     ($settings | ConvertTo-Json -Depth 32 -WarningAction Stop) + "`n"
 }
 
-function ConvertTo-HermesGlob {
-    <#
-        Wraps a pattern so it matches anywhere in the command string, without
-        doubling a wildcard the pattern already carries.
-    #>
-    param([string]$Pattern)
-
-    $glob = $Pattern
-    if (-not $glob.StartsWith('*')) { $glob = "*$glob" }
-    if (-not $glob.EndsWith('*')) { $glob = "$glob*" }
-    $glob
-}
-
-function ConvertTo-HermesReadPattern {
-    <#
-        Turns a policy read path into Hermes deny globs.
-
-        Hermes matches fnmatch against the whole command string, so a bare
-        *.env* would also block --env and environment. Anchoring on a path
-        separator or on the whitespace that starts an argument keeps the
-        pattern to the file it is about.
-    #>
-    param([string]$Path)
-
-    $core = $Path -replace '^\./', '' -replace '^~/', '' -replace '^\*\*/', ''
-    $core = $core -replace '/\*\*$', '/'
-    $core = $core -replace '\*\*/', ''
-
-    @("*/$core*", "* $core*")
-}
-
-function New-HermesHookRules {
-    <#
-        Emits the read patterns the pre_tool_call hook matches against.
-
-        approvals.deny only sees terminal commands. read_file is a native Hermes
-        tool, so a secret-file rule needs the hook to have any effect there.
-    #>
-    param([object]$Policy)
-
-    $read = [System.Collections.Generic.List[object]]::new()
-
-    foreach ($rule in $Policy.rules) {
-        if ($rule.decision -ne 'forbid') { continue }
-        if ($rule.PSObject.Properties.Name -notcontains 'read_paths') { continue }
-
-        $read.Add([ordered]@{
-            id       = $rule.id
-            why      = $rule.why
-            patterns = @(@($rule.read_paths) | ForEach-Object { $_ -replace '^\./', '' })
-        })
-    }
-
-    (([ordered]@{ read = @($read) } | ConvertTo-Json -Depth 32 -WarningAction Stop) + "`n")
-}
-
-function New-HermesConfig {
-    <#
-        Emits the generated approvals block followed by the base config verbatim.
-
-        approvals.deny is the only Hermes boundary that survives --yolo, /yolo,
-        and approvals.mode off, so both forbid and confirm land there. Hermes has
-        no prompt-level decision that still works in an autonomous session, so a
-        confirm rule with autonomy_omit is left out and runs.
-
-        Every pattern is wrapped in * because Hermes matches against the whole
-        command string. That also catches wrappers such as `rtk git push --force`
-        without a separate rule.
-    #>
-    param([object]$Policy, [string]$BaseConfig)
-
-    $deny = [System.Collections.Generic.List[string]]::new()
-
-    foreach ($tier in @('forbid', 'confirm')) {
-        foreach ($rule in $Policy.rules) {
-            if ($rule.decision -ne $tier) { continue }
-            if ($rule.PSObject.Properties.Name -contains 'autonomy_omit' -and $rule.autonomy_omit) {
-                continue
-            }
-
-            foreach ($command in @($rule.commands)) {
-                if ([string]::IsNullOrWhiteSpace($command)) { continue }
-                $deny.Add((ConvertTo-HermesGlob -Pattern $command))
-            }
-
-            if ($rule.PSObject.Properties.Name -contains 'glob_rules') {
-                foreach ($glob in @($rule.glob_rules)) {
-                    $deny.Add((ConvertTo-HermesGlob -Pattern $glob))
-                }
-            }
-
-            if ($rule.PSObject.Properties.Name -contains 'read_paths') {
-                foreach ($path in @($rule.read_paths)) {
-                    foreach ($pattern in (ConvertTo-HermesReadPattern -Path $path)) {
-                        $deny.Add($pattern)
-                    }
-                }
-            }
-        }
-    }
-
-    $unique = [System.Collections.Generic.List[string]]::new()
-    foreach ($pattern in $deny) {
-        if (-not $unique.Contains($pattern)) { $unique.Add($pattern) }
-    }
-
-    $lines = [System.Collections.Generic.List[string]]::new()
-    $lines.Add('# --- generated by mewai from core/policy/policy.json. Do not edit. ---')
-    $lines.Add('# These block unconditionally, before --yolo, /yolo, and approvals.mode off.')
-    $lines.Add('# Change core/policy/policy.json and run scripts/render.ps1.')
-    $lines.Add('approvals:')
-    $lines.Add('  deny:')
-    foreach ($pattern in $unique) {
-        $lines.Add('    - "' + $pattern + '"')
-    }
-    $lines.Add('hooks:')
-    $lines.Add('  pre_tool_call:')
-    $lines.Add('    - matcher: "read_file"')
-    $lines.Add('      command: "~/AppData/Local/hermes/hooks/mewai-hook.cmd"')
-    $lines.Add('      timeout: 15')
-    $lines.Add('      fail_closed: true')
-    # Without this the hook is skipped whenever its script hash is not on the
-    # allowlist, and a skipped hook is a boundary that silently stopped existing.
-    # A re-render changes the hash, so the prompt would fire again every install.
-    $lines.Add('hooks_auto_accept: true')
-    $lines.Add('# --- end generated ---')
-    $lines.Add('')
-
-    ($lines -join "`n") + $BaseConfig
-}
-
 function New-InstructionFile {
     $sections = foreach ($module in $SharedModules) { Read-Module -RelativePath $module }
 
@@ -395,30 +248,6 @@ $configTargets = @(
         Install = '~/.config/opencode/opencode.jsonc'
         Content = New-OpenCodeSettings -Policy $policy
         Sources = @('core/providers/opencode/opencode.json', 'core/policy/policy.json')
-    },
-    @{
-        Build   = 'build/hermes/hooks/mewai-hook.ps1'
-        Install = '~/AppData/Local/hermes/hooks/mewai-hook.ps1'
-        Content = (Get-Content -Path (Join-Path $CoreDir 'providers/hermes/mewai-hook.ps1') -Raw)
-        Sources = @('core/providers/hermes/mewai-hook.ps1')
-    },
-    @{
-        Build   = 'build/hermes/hooks/mewai-hook.cmd'
-        Install = '~/AppData/Local/hermes/hooks/mewai-hook.cmd'
-        Content = (Get-Content -Path (Join-Path $CoreDir 'providers/hermes/mewai-hook.cmd') -Raw)
-        Sources = @('core/providers/hermes/mewai-hook.cmd')
-    },
-    @{
-        Build   = 'build/hermes/hooks/rules.json'
-        Install = '~/AppData/Local/hermes/hooks/rules.json'
-        Content = New-HermesHookRules -Policy $policy
-        Sources = @('core/policy/policy.json')
-    },
-    @{
-        Build   = 'build/hermes/config.yaml'
-        Install = '~/AppData/Local/hermes/config.yaml'
-        Content = New-HermesConfig -Policy $policy -BaseConfig (Get-Content -Path (Join-Path $CoreDir 'providers/hermes/config.yaml') -Raw)
-        Sources = @('core/providers/hermes/config.yaml', 'core/policy/policy.json')
     }
 )
 
