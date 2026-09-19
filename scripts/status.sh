@@ -53,7 +53,7 @@ done < <(jq -r '.entries[] | [.install, .sha256] | @tsv' "$manifest" | tr -d '\r
 orphans=()
 managed="$(jq -r '.entries[].install' "$manifest" | tr -d '\r')"
 
-for root in "$HOME/.claude/skills" "$HOME/.agents/skills" "$HOME/.gemini/skills"; do
+for root in "$HOME/.agents/skills" "$HOME/.gemini/skills"; do
   [[ -d "$root" ]] || continue
   # shellcheck disable=SC2088 # literal display text, not a path being expanded
   display="~/${root#"$HOME"/}"

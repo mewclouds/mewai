@@ -30,5 +30,5 @@ A new `core/skills/<name>/SKILL.md` following the requirements in `docs/AUTHORIN
 ## Validation
 
 - `scripts/validate.ps1` passes.
-- The rendered skill appears byte-identical across the Claude Code and Antigravity build targets, same as every other skill.
+- The rendered skill appears byte-identical across every skill install target.
 - Every workflow step in the finished file traces back to something the user actually said, not an assumption filled in during drafting.

@@ -11,7 +11,7 @@
 
     - It reports what it would do and changes nothing unless you pass -Confirm.
     - It only removes paths listed in build/manifest.json, plus skill directories
-      under the three skill roots. It never touches credentials, sessions, history,
+      under the skill roots. It never touches credentials, sessions, history,
       caches, or runtime databases.
 
     Everything removed is copied to ~/.mewai/backups/<timestamp>/ first.
@@ -46,7 +46,7 @@ if ($IncludeUnmanagedSkills) {
     $managed = @{}
     foreach ($entry in $manifest.entries) { $managed[$entry.install] = $true }
 
-    foreach ($root in @('~/.claude/skills', '~/.agents/skills', '~/.gemini/skills')) {
+    foreach ($root in @('~/.agents/skills', '~/.gemini/skills')) {
         $rootPath = Join-Path $HomeDir $root.Substring(2)
         if (-not (Test-Path $rootPath)) { continue }
 
@@ -88,7 +88,7 @@ foreach ($target in $targets) {
 # that are now empty, and only directly under the skill roots. Never walk further up:
 # deleting a non-empty parent is where an uninstall script turns into a mistake.
 if ($Confirm) {
-    foreach ($root in @('~/.claude/skills', '~/.agents/skills', '~/.gemini/skills')) {
+    foreach ($root in @('~/.agents/skills', '~/.gemini/skills')) {
         $rootPath = Join-Path $HomeDir $root.Substring(2)
         if (-not (Test-Path $rootPath)) { continue }
 

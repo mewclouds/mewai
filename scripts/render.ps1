@@ -23,9 +23,8 @@ $RepoRoot = Split-Path -Parent $PSScriptRoot
 $CoreDir = Join-Path $RepoRoot 'core'
 $BuildDir = Join-Path $RepoRoot 'build'
 
-# Every provider renders the same instruction file. Only the filename, the install
-# path, and any front matter the format requires differ, so a rule cannot drift
-# between providers.
+# Every provider renders the same instruction file. Only the filename and the
+# install path differ, so a rule cannot drift between providers.
 $SharedModules = @('base.md')
 
 # One entry per provider, holding everything that differs. Adding a provider is
@@ -33,10 +32,10 @@ $SharedModules = @('base.md')
 # root another provider installs to, so mewai renders no second copy for it.
 $Providers = @(
     @{
-        Name               = 'claude'
-        InstructionFile    = 'CLAUDE.md'
-        InstructionInstall = '~/.claude/CLAUDE.md'
-        SkillsInstallRoot  = '~/.claude/skills'
+        Name               = 'opencode'
+        InstructionFile    = 'AGENTS.md'
+        InstructionInstall = '~/.config/opencode/AGENTS.md'
+        SkillsInstallRoot  = $null
     },
     @{
         Name               = 'antigravity'
@@ -49,13 +48,6 @@ $Providers = @(
         InstructionFile    = 'SOUL.md'
         InstructionInstall = '~/AppData/Local/hermes/SOUL.md'
         SkillsInstallRoot  = '~/.agents/skills'
-    },
-    @{
-        Name                    = 'cursor'
-        InstructionFile         = 'mewai.mdc'
-        InstructionInstall      = '~/.cursor/rules/mewai.mdc'
-        SkillsInstallRoot       = $null
-        InstructionFrontMatter  = "---`nalwaysApply: true`n---"
     }
 )
 
@@ -104,7 +96,7 @@ function Get-Policy {
 
     $policy = Get-Content -Path $path -Raw | ConvertFrom-Json
     foreach ($rule in $policy.rules) {
-        if ($rule.decision -notin @('allow', 'confirm', 'forbid')) {
+        if ($rule.decision -notin @('confirm', 'forbid')) {
             throw "rule '$($rule.id)' has unknown decision '$($rule.decision)'"
         }
         if ([string]::IsNullOrWhiteSpace($rule.why)) {
@@ -122,95 +114,111 @@ function Get-Policy {
     $policy
 }
 
-function New-ClaudeSettings {
+function ConvertTo-OpenCodeReadPattern {
     <#
-        Emits the complete settings file: the base settings from
-        core/providers/claude/settings.json with the rendered permissions injected.
+        Turns a policy read path into OpenCode permission.read patterns.
 
-        mewai owns this file outright, so installing is a plain copy and drift is a
-        hash comparison. Anything you change through /config shows up in `status`,
-        which is the point.
+        OpenCode matches file paths and expands a leading tilde, so the
+        repository-relative "./" prefix means nothing there. A path without one
+        also gets a "**/" variant, because the same secret file at a nested path
+        is the same secret.
+    #>
+    param([string]$Path)
 
-        Both Bash() and PowerShell() variants are emitted for every command, because
-        on Windows the agent reaches the same git or gh binary through either shell
-        and a rule that covers only one of them is a gap.
+    $normalized = $Path -replace '^\./', ''
+    if ($normalized.StartsWith('~')) {
+        return @($normalized)
+    }
+
+    $patterns = @($normalized)
+    if (-not $normalized.StartsWith('**/')) {
+        $patterns += "**/$normalized"
+    }
+    $patterns
+}
+
+function New-OpenCodeSettings {
+    <#
+        Emits the complete OpenCode config: the base settings from
+        core/providers/opencode/opencode.json with the rendered permission block
+        injected.
+
+        OpenCode evaluates permission patterns last-match-wins, so tier order in
+        the emitted object is part of the meaning. Ask first, deny last. There
+        is one bash matcher. Unmatched commands fall through to OpenCode's default
+        of allow.
+
+        confirm renders as ask. autonomy_omit is for Hermes, not here.
     #>
     param([object]$Policy)
 
-    $basePath = Join-Path $CoreDir 'providers/claude/settings.json'
+    $basePath = Join-Path $CoreDir 'providers/opencode/opencode.json'
     if (-not (Test-Path $basePath)) {
-        throw 'core/providers/claude/settings.json not found'
+        throw 'core/providers/opencode/opencode.json not found'
     }
     $base = Get-Content -Path $basePath -Raw | ConvertFrom-Json
 
-    $buckets = @{ allow = @(); ask = @(); deny = @() }
-    $keyFor = @{ allow = 'allow'; confirm = 'ask'; forbid = 'deny' }
+    $buckets = @{ ask = @(); deny = @() }
+    $keyFor = @{ confirm = 'ask'; forbid = 'deny' }
+
+    # An ordinal comparer, not [ordered]@{}. PowerShell's default ordered
+    # hashtable compares keys case insensitively, which silently collapses a
+    # pattern pair that differs only in casing.
+    $readPatterns = [System.Collections.Specialized.OrderedDictionary]::new([System.StringComparer]::Ordinal)
 
     foreach ($rule in $Policy.rules) {
         $key = $keyFor[$rule.decision]
 
-        foreach ($command in $rule.commands) {
-            # Trailing " *" enforces a word boundary, so "ls *" matches "ls -la" but
-            # not "lsof". This is the form the permission dialog itself writes.
-            $buckets[$key] += "Bash($command *)"
-            $buckets[$key] += "PowerShell($command *)"
+        foreach ($command in @($rule.commands)) {
+            if ([string]::IsNullOrWhiteSpace($command)) { continue }
 
-            # Claude Code strips only a fixed wrapper list (timeout, nice, nohup and
-            # friends). Runners like rtk, npx, and docker exec are not stripped, so a
-            # bare prefix rule misses "rtk git push --force". A leading wildcard
-            # closes that. Only for rules that restrict: broadening an allow rule
-            # this way would hand approval to anything that merely ends the right way.
-            if ($rule.decision -ne 'allow') {
-                $buckets[$key] += "Bash(* $command *)"
-                $buckets[$key] += "PowerShell(* $command *)"
-            }
+            $buckets[$key] += $command
+            $buckets[$key] += "$command *"
+            $buckets[$key] += "* $command"
+            $buckets[$key] += "* $command *"
         }
 
-        if ($rule.PSObject.Properties.Name -contains 'claude_rules') {
-            foreach ($raw in $rule.claude_rules) {
+        if ($rule.PSObject.Properties.Name -contains 'glob_rules') {
+            foreach ($raw in $rule.glob_rules) {
                 $buckets[$key] += $raw
             }
         }
 
-        # read_paths is a file-read boundary rather than a command one. Claude Code
-        # matches it with the Read() tool matcher.
         if ($rule.PSObject.Properties.Name -contains 'read_paths') {
             foreach ($path in $rule.read_paths) {
-                $buckets[$key] += "Read($path)"
+                foreach ($pattern in (ConvertTo-OpenCodeReadPattern -Path $path)) {
+                    if ($readPatterns.Contains($pattern)) { $readPatterns.Remove($pattern) }
+                    $readPatterns[$pattern] = $key
+                }
             }
         }
     }
 
-    # Keys starting with an underscore are notes for whoever edits the source file.
-    # Claude Code should never see them.
+    $bash = [System.Collections.Specialized.OrderedDictionary]::new([System.StringComparer]::Ordinal)
+    foreach ($tier in @('ask', 'deny')) {
+        foreach ($pattern in $buckets[$tier]) {
+            if ($bash.Contains($pattern)) { $bash.Remove($pattern) }
+            $bash[$pattern] = $tier
+        }
+    }
+
     $settings = [ordered]@{}
     foreach ($property in $base.PSObject.Properties) {
-        if ($property.Name.StartsWith('_') -or $property.Name -eq 'permissions') { continue }
+        if ($property.Name -eq 'permission') {
+            throw 'core/providers/opencode/opencode.json must not set permission. It is generated from core/policy/policy.json.'
+        }
+        if ($property.Name.StartsWith('_')) { continue }
         $settings[$property.Name] = $property.Value
     }
 
-    # Mode-level permission settings such as defaultMode come from the settings
-    # source. Only the three rule arrays are generated, so changing the mode does not
-    # mean editing the renderer.
-    $permissions = [ordered]@{}
-    if ($base.PSObject.Properties.Name -contains 'permissions') {
-        foreach ($property in $base.permissions.PSObject.Properties) {
-            if ($property.Name.StartsWith('_')) { continue }
-            if ($property.Name -in @('allow', 'ask', 'deny')) {
-                throw "core/providers/claude/settings.json must not set permissions.$($property.Name). It is generated from core/policy/policy.json."
-            }
-            $permissions[$property.Name] = $property.Value
-        }
+    $settings['permission'] = [ordered]@{
+        bash = $bash
+        read = $readPatterns
     }
-
-    $permissions['allow'] = @($buckets.allow)
-    $permissions['ask'] = @($buckets.ask)
-    $permissions['deny'] = @($buckets.deny)
-
-    $settings['permissions'] = $permissions
 
     ($settings | ConvertTo-Json -Depth 32 -WarningAction Stop) + "`n"
 }
+
 function ConvertTo-HermesGlob {
     <#
         Wraps a pattern so it matches anywhere in the command string, without
@@ -247,8 +255,7 @@ function New-HermesHookRules {
         Emits the read patterns the pre_tool_call hook matches against.
 
         approvals.deny only sees terminal commands. read_file is a native Hermes
-        tool, so a secret-file rule needs the hook to have any effect there. This
-        is the same split Cursor has: a rule table plus a matcher script.
+        tool, so a secret-file rule needs the hook to have any effect there.
     #>
     param([object]$Policy)
 
@@ -274,14 +281,12 @@ function New-HermesConfig {
 
         approvals.deny is the only Hermes boundary that survives --yolo, /yolo,
         and approvals.mode off, so both forbid and confirm land there. Hermes has
-        no prompt-level decision that still works in an autonomous session, the
-        same gap Cursor has, so a confirm rule with autonomy_omit is left out and
-        runs.
+        no prompt-level decision that still works in an autonomous session, so a
+        confirm rule with autonomy_omit is left out and runs.
 
         Every pattern is wrapped in * because Hermes matches against the whole
         command string. That also catches wrappers such as `rtk git push --force`
-        without a separate rule, which is why no leading-wildcard variant is
-        emitted the way Claude Code needs.
+        without a separate rule.
     #>
     param([object]$Policy, [string]$BaseConfig)
 
@@ -345,78 +350,6 @@ function New-HermesConfig {
     ($lines -join "`n") + $BaseConfig
 }
 
-function New-CursorRules {
-    <#
-        Emits the rule table the Cursor hook script matches against.
-
-        Cursor hook `ask` is a no-op in Run Everything, so confirm is written as
-        deny and the script tells the agent to hand the user the exact command.
-        A confirm rule with autonomy_omit is left out of the hook and runs.
-        Forbid is deny without that handoff. Allow is omitted: unlisted commands
-        fall through to Run Everything.
-
-        Token phrases come from policy commands. Globs come from glob_rules,
-        unwrapped command strings that close the flag-position gap prefix
-        matching cannot.
-    #>
-    param([object]$Policy)
-
-    $shell = [System.Collections.Generic.List[object]]::new()
-    $read = [System.Collections.Generic.List[object]]::new()
-
-    foreach ($tier in @('forbid', 'confirm')) {
-        foreach ($rule in $Policy.rules) {
-            if ($rule.decision -ne $tier) { continue }
-            if ($rule.PSObject.Properties.Name -contains 'autonomy_omit' -and $rule.autonomy_omit) {
-                continue
-            }
-
-            $tokens = [System.Collections.Generic.List[string]]::new()
-            foreach ($command in @($rule.commands)) {
-                if (-not [string]::IsNullOrWhiteSpace($command)) {
-                    $tokens.Add($command)
-                }
-            }
-
-            $globs = [System.Collections.Generic.List[string]]::new()
-            if ($rule.PSObject.Properties.Name -contains 'glob_rules') {
-                foreach ($glob in @($rule.glob_rules)) {
-                    $globs.Add([string]$glob)
-                }
-            }
-
-            if ($tokens.Count -gt 0 -or $globs.Count -gt 0) {
-                $shell.Add([ordered]@{
-                    id     = $rule.id
-                    tier   = $tier
-                    why    = $rule.why
-                    tokens = @($tokens)
-                    globs  = @($globs)
-                })
-            }
-
-            if ($rule.PSObject.Properties.Name -contains 'read_paths') {
-                $patterns = [System.Collections.Generic.List[string]]::new()
-                foreach ($path in @($rule.read_paths)) {
-                    $patterns.Add(($path -replace '^\./', ''))
-                }
-                $read.Add([ordered]@{
-                    id       = $rule.id
-                    tier     = $tier
-                    why      = $rule.why
-                    patterns = @($patterns)
-                })
-            }
-        }
-    }
-
-    $payload = [ordered]@{
-        shell = @($shell)
-        read  = @($read)
-    }
-    ($payload | ConvertTo-Json -Depth 32 -WarningAction Stop) + "`n"
-}
-
 function New-InstructionFile {
     $sections = foreach ($module in $SharedModules) { Read-Module -RelativePath $module }
 
@@ -436,18 +369,14 @@ if (Test-Path $BuildDir) {
 
 $manifestEntries = [System.Collections.Generic.List[object]]::new()
 
-# Every provider gets byte-identical content. Only the filename, the install path,
-# and Cursor's required front matter differ.
+# Every provider gets byte-identical content. Only the filename and the install
+# path differ.
 $instructionBody = New-InstructionFile
 $instructionSources = @($SharedModules) | ForEach-Object { "core/instructions/$_" }
 
 foreach ($provider in $Providers) {
     $target = Join-Path (Join-Path $BuildDir $provider.Name) $provider.InstructionFile
-    $instruction = $instructionBody
-    if ($provider.ContainsKey('InstructionFrontMatter')) {
-        $instruction = $provider.InstructionFrontMatter.TrimEnd() + "`n`n" + $instruction
-    }
-    Write-RenderedFile -Path $target -Content $instruction
+    Write-RenderedFile -Path $target -Content $instructionBody
 
     $manifestEntries.Add([ordered]@{
         build   = "build/$($provider.Name)/$($provider.InstructionFile)"
@@ -462,16 +391,10 @@ $policy = Get-Policy
 
 $configTargets = @(
     @{
-        Build   = 'build/claude/settings.json'
-        Install = '~/.claude/settings.json'
-        Content = New-ClaudeSettings -Policy $policy
-        Sources = @('core/providers/claude/settings.json', 'core/policy/policy.json')
-    },
-    @{
-        Build   = 'build/claude/statusline-command.sh'
-        Install = '~/.claude/statusline-command.sh'
-        Content = (Get-Content -Path (Join-Path $CoreDir 'providers/claude/statusline-command.sh') -Raw)
-        Sources = @('core/providers/claude/statusline-command.sh')
+        Build   = 'build/opencode/opencode.jsonc'
+        Install = '~/.config/opencode/opencode.jsonc'
+        Content = New-OpenCodeSettings -Policy $policy
+        Sources = @('core/providers/opencode/opencode.json', 'core/policy/policy.json')
     },
     @{
         Build   = 'build/hermes/hooks/mewai-hook.ps1'
@@ -496,24 +419,6 @@ $configTargets = @(
         Install = '~/AppData/Local/hermes/config.yaml'
         Content = New-HermesConfig -Policy $policy -BaseConfig (Get-Content -Path (Join-Path $CoreDir 'providers/hermes/config.yaml') -Raw)
         Sources = @('core/providers/hermes/config.yaml', 'core/policy/policy.json')
-    },
-    @{
-        Build   = 'build/cursor/hooks.json'
-        Install = '~/.cursor/hooks.json'
-        Content = (Get-Content -Path (Join-Path $CoreDir 'providers/cursor/hooks.json') -Raw)
-        Sources = @('core/providers/cursor/hooks.json')
-    },
-    @{
-        Build   = 'build/cursor/hooks/mewai-policy.ps1'
-        Install = '~/.cursor/hooks/mewai-policy.ps1'
-        Content = (Get-Content -Path (Join-Path $CoreDir 'providers/cursor/mewai-policy.ps1') -Raw)
-        Sources = @('core/providers/cursor/mewai-policy.ps1')
-    },
-    @{
-        Build   = 'build/cursor/hooks/rules.json'
-        Install = '~/.cursor/hooks/rules.json'
-        Content = New-CursorRules -Policy $policy
-        Sources = @('core/policy/policy.json')
     }
 )
 

@@ -59,7 +59,7 @@ $orphans = [System.Collections.Generic.List[string]]::new()
 $managed = @{}
 foreach ($entry in $manifest.entries) { $managed[$entry.install] = $true }
 
-foreach ($root in @('~/.claude/skills', '~/.agents/skills', '~/.gemini/skills')) {
+    foreach ($root in @('~/.agents/skills', '~/.gemini/skills')) {
     $rootPath = Join-Path $HomeDir $root.Substring(2)
     if (-not (Test-Path $rootPath)) { continue }
 

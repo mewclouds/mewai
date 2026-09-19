@@ -50,7 +50,7 @@ done < <(jq -r '.entries[].install' "$manifest" | tr -d '\r')
 
 if "$include_unmanaged"; then
   managed="$(jq -r '.entries[].install' "$manifest" | tr -d '\r')"
-  for root in "$HOME/.claude/skills" "$HOME/.agents/skills" "$HOME/.gemini/skills"; do
+  for root in "$HOME/.agents/skills" "$HOME/.gemini/skills"; do
     [[ -d "$root" ]] || continue
     # shellcheck disable=SC2088 # literal display text, not a path being expanded
     display="~/${root#"$HOME"/}"
@@ -93,7 +93,7 @@ done
 # that are now empty, and only directly under the skill roots. Never walk further up:
 # deleting a non-empty parent is where an uninstall script turns into a mistake.
 if "$confirm"; then
-  for root in "$HOME/.claude/skills" "$HOME/.agents/skills" "$HOME/.gemini/skills"; do
+  for root in "$HOME/.agents/skills" "$HOME/.gemini/skills"; do
     [[ -d "$root" ]] || continue
     find "$root" -mindepth 1 -maxdepth 1 -type d -empty -exec rmdir {} +
   done

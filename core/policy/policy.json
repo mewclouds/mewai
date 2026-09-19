@@ -1,91 +1,36 @@
 {
   "version": 1,
-  "note": "Single source for command boundaries. Rendered into Claude Code permission rules and the Cursor hook rule table. Edit this file, then run scripts/render.ps1.",
+  "note": "Single source for command boundaries. Rendered into OpenCode permission rules. Edit this file, then run scripts/render.ps1.",
   "decisions": {
-    "allow": "Runs without a prompt. Reserved for commands that cannot change state.",
-    "confirm": "Prompts every time. Survives bypassPermissions in Claude Code.",
-    "forbid": "Blocked. Survives bypassPermissions in Claude Code."
+    "confirm": "Prompts every time on OpenCode.",
+    "forbid": "Blocked."
   },
   "rules": [
     {
-      "id": "read-only-inspection",
-      "decision": "allow",
-      "why": "Inspection changes nothing, so approving it only costs attention.",
-      "commands": [
-        "rg",
-        "fd",
-        "ls",
-        "cat",
-        "head",
-        "tail",
-        "wc",
-        "sort",
-        "uniq",
-        "jq",
-        "git status",
-        "git diff",
-        "git log",
-        "git show",
-        "git branch",
-        "git rev-parse",
-        "git ls-files",
-        "gh pr view",
-        "gh pr list",
-        "gh pr checks",
-        "gh pr diff",
-        "gh issue view",
-        "gh issue list",
-        "gh repo view",
-        "gh run view",
-        "gh run list"
-      ]
-    },
-    {
       "id": "history-rewrite",
       "decision": "forbid",
-      "why": "Recovering a force-pushed branch or a hard reset is manual and error prone. Make a focused reversible change instead.",
+      "why": "These rewrite or wipe local history. Inspect and make a focused reversible change instead.",
       "commands": [
-        "git push --force",
-        "git push -f",
-        "git push --force-with-lease",
-        "git reset --hard",
         "git clean",
         "git rebase --interactive",
         "git filter-branch"
-      ],
-      "claude_rules": [
-        "Bash(git push * --force*)",
-        "Bash(git push * -f)",
-        "Bash(git push * -f *)",
-        "PowerShell(git push * --force*)",
-        "PowerShell(git push * -f)",
-        "PowerShell(git push * -f *)"
-      ],
-      "glob_rules": [
-        "git push * --force*",
-        "git push * -f",
-        "git push * -f *"
-      ],
-      "why_extra_rules": "A prefix rule only matches when the flag is the third word. 'git push origin main --force' has it fifth, so the prefix rules above miss it. claude_rules closes the gap for Claude Code. glob_rules closes it for the Cursor hook, which matches them against the whole command string. See docs/PROVIDERS.md."
+      ]
     },
     {
       "id": "discard-work",
       "decision": "forbid",
       "why": "These throw away uncommitted work with no undo. Inspect and revert exact files instead.",
       "commands": [
-        "git checkout --",
         "git restore --staged --worktree",
         "git stash drop",
-        "git stash clear",
-        "git branch -D"
+        "git stash clear"
       ]
     },
     {
       "id": "remote-destruction",
       "decision": "forbid",
-      "why": "Deleting a remote repository or release is never an incidental development action. Do it by hand after verifying the exact target.",
+      "why": "Deleting a remote release or cache is never an incidental development action. Do it by hand after verifying the exact target.",
       "commands": [
-        "gh repo delete",
         "gh release delete",
         "gh cache delete"
       ]
@@ -101,30 +46,15 @@
     {
       "id": "publish-and-share",
       "decision": "confirm",
-      "why": "Pushing, publishing, and messaging are visible to other people the moment they run, and approval for one does not carry to the next.",
+      "why": "Opening, merging, and closing work on GitHub is visible to other people the moment it runs, and approval for one does not carry to the next.",
       "autonomy_omit": true,
       "commands": [
-        "git push",
-        "git tag",
-        "git remote",
         "gh pr create",
         "gh pr merge",
         "gh pr close",
         "gh issue create",
         "gh issue close",
-        "gh release create",
-        "gh workflow run",
-        "npm publish"
-      ]
-    },
-    {
-      "id": "dependency-mutation",
-      "decision": "confirm",
-      "why": "Installing packages runs third-party install scripts and rewrites lockfiles that the rest of the project depends on.",
-      "autonomy_omit": true,
-      "commands": [
-        "npm install",
-        "npm i"
+        "gh release create"
       ]
     },
     {
@@ -144,7 +74,7 @@
         "~/.codex/auth.json",
         "~/.claude/.credentials.json"
       ],
-      "why_read_paths": "A file-read boundary, not a command boundary, which is why the commands array is empty. Claude Code renders these as Read() rules and the Cursor hook matches them before a read."
+      "why_read_paths": "A file-read boundary, not a command boundary, which is why the commands array is empty. OpenCode renders these as permission.read entries. The Hermes hook matches them before a read."
     }
   ]
 }

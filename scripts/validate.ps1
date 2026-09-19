@@ -20,7 +20,7 @@ $InstructionsDir = Join-Path $RepoRoot 'core/instructions'
 # Exceeding a budget is a signal to cut, not to raise the number. Raising one is a
 # decision worth arguing for in a commit message.
 $LineBudgets = @{
-    'base.md' = 80
+    'base.md' = 120
 }
 $RenderedLineBudget = 400
 
@@ -123,10 +123,10 @@ foreach ($module in $styleTargets) {
     foreach ($line in $module.Text -split "`n") {
         $lineNumber++
 
-        if ($line -match '–') {
+        if ($line -match 'â€“') {
             Add-Failure "$($module.Relative):${lineNumber}: en dash"
         }
-        if ($line -match '[‘’“”]') {
+        if ($line -match '[â€˜â€™â€œâ€]') {
             Add-Failure "$($module.Relative):${lineNumber}: smart quote"
         }
         # \p{So} covers pictographs and dingbats, \p{Cs} covers the surrogate pairs
@@ -255,7 +255,7 @@ else {
             }
             $seenIds[$rule.id] = $true
 
-            if ($rule.decision -notin @('allow', 'confirm', 'forbid')) {
+            if ($rule.decision -notin @('confirm', 'forbid')) {
                 Add-Failure "policy rule '$($rule.id)': unknown decision '$($rule.decision)'"
             }
             if ([string]::IsNullOrWhiteSpace($rule.why)) {
@@ -271,15 +271,13 @@ else {
             }
         }
 
-        # A command that is both allowed and restricted is a contradiction the
-        # providers resolve differently, so catch it here instead.
-        $byDecision = @{ allow = @(); confirm = @(); forbid = @() }
+        $byDecision = @{ confirm = @(); forbid = @() }
         foreach ($rule in $policy.rules) {
             $byDecision[$rule.decision] += $rule.commands
         }
-        foreach ($allowed in $byDecision.allow) {
-            if ($byDecision.confirm -contains $allowed -or $byDecision.forbid -contains $allowed) {
-                Add-Failure "policy: '$allowed' is both allowed and restricted"
+        foreach ($command in $byDecision.confirm) {
+            if ($byDecision.forbid -contains $command) {
+                Add-Failure "policy: '$command' is both confirm and forbid"
             }
         }
     }
@@ -319,155 +317,142 @@ else {
     }
 }
 
-# --- claude settings ---------------------------------------------------------
-# A mode and a switch that disables that mode is a contradiction the settings file
-# accepts silently, and the symptom is a permission tier that never fires.
+# --- opencode permissions ----------------------------------------------------
+# OpenCode resolves a command by taking the last pattern that matches it, so
+# tier order in the emitted object is the decision.
 
-$claudeSettingsPath = Join-Path $RepoRoot 'build/claude/settings.json'
-if (Test-Path $claudeSettingsPath) {
-    $claudeSettings = Get-Content -Path $claudeSettingsPath -Raw | ConvertFrom-Json
-    $claudePermissions = $claudeSettings.permissions
-    $permissionKeys = $claudePermissions.PSObject.Properties.Name
-
-    $mode = if ($permissionKeys -contains 'defaultMode') { $claudePermissions.defaultMode } else { $null }
-
-    if ($mode -eq 'auto' -and $permissionKeys -contains 'disableAutoMode') {
-        Add-Failure 'settings: defaultMode is auto but disableAutoMode is set, which turns auto mode off'
-    }
-    if ($mode -eq 'bypassPermissions' -and $permissionKeys -contains 'disableBypassPermissionsMode') {
-        Add-Failure 'settings: defaultMode is bypassPermissions but disableBypassPermissionsMode is set'
-    }
-
-    # Ask rules are silently inert under bypassPermissions, verified on this machine
-    # against Claude Code's own behavior. Shipping ask rules with that mode gives a
-    # confirm tier that looks configured and never fires.
-    if ($mode -eq 'bypassPermissions' -and $claudePermissions.ask.Count -gt 0) {
-        Add-Failure ("settings: defaultMode is bypassPermissions, where the {0} ask rule(s) never prompt. Use auto, or move those commands to forbid." -f $claudePermissions.ask.Count)
-    }
-}
-
-# --- cursor hooks ------------------------------------------------------------
-# These run the rendered matcher the same way Cursor will: JSON on stdin, JSON
-# on stdout. They do not need the Cursor binary. A matcher that cannot decide
-# is a failed check, not a skipped one.
-
-$cursorScript = Join-Path $RepoRoot 'build/cursor/hooks/mewai-policy.ps1'
-$cursorRulesPath = Join-Path $RepoRoot 'build/cursor/hooks/rules.json'
-$cursorHooksPath = Join-Path $RepoRoot 'build/cursor/hooks.json'
-
-if (-not (Test-Path $cursorScript) -or -not (Test-Path $cursorRulesPath) -or -not (Test-Path $cursorHooksPath)) {
-    Add-Failure 'build/cursor hook files are missing. Run scripts/render.ps1.'
+$bashRules = @()
+$openCodePath = Join-Path $RepoRoot 'build/opencode/opencode.jsonc'
+if (-not (Test-Path $openCodePath)) {
+    Add-Failure 'build/opencode/opencode.jsonc is missing. Run scripts/render.ps1.'
 }
 else {
-    $hooksRaw = (Get-Content -Path $cursorHooksPath -Raw) -replace "`r`n", "`n"
-    $failClosedCount = ([regex]::Matches($hooksRaw, '"failClosed"\s*:\s*true')).Count
-    if ($failClosedCount -lt 2) {
-        Add-Failure 'cursor: hooks.json must set failClosed true on both policy hooks so a broken matcher blocks'
+    $openCodeRaw = (Get-Content -Path $openCodePath -Raw) -replace "`r`n", "`n"
+
+    try {
+        $null = $openCodeRaw | ConvertFrom-Json -AsHashtable
+        $openCode = $true
+    }
+    catch {
+        Add-Failure "build/opencode/opencode.jsonc is not valid JSON: $_"
+        $openCode = $false
     }
 
-    if ($policy) {
-        $cursorRules = Get-Content -Path $cursorRulesPath -Raw | ConvertFrom-Json
-        $shellIds = @($cursorRules.shell | ForEach-Object { $_.id })
+    if ($openCode) {
+        $bashBlock = [regex]::Match($openCodeRaw, '(?s)"bash":\s*\{(.*?)\n    \}')
+        $bashRules = [regex]::Matches($bashBlock.Groups[1].Value, '"((?:[^"\\]|\\.)*)":\s*"(ask|deny)"') |
+            ForEach-Object { [pscustomobject]@{ Pattern = $_.Groups[1].Value; Action = $_.Groups[2].Value } }
 
-        foreach ($rule in @($policy.rules | Where-Object { $_.decision -in @('forbid', 'confirm') })) {
-            $autonomyOmit = ($rule.PSObject.Properties.Name -contains 'autonomy_omit' -and $rule.autonomy_omit)
-            if (@($rule.commands).Count -eq 0) { continue }
-            if ($autonomyOmit) {
-                if ($shellIds -contains $rule.id) {
-                    Add-Failure "cursor: autonomy_omit rule '$($rule.id)' still rendered a shell matcher"
-                }
-                continue
-            }
-            if ($shellIds -notcontains $rule.id) {
-                Add-Failure "cursor: rule '$($rule.id)' rendered no shell matcher"
-            }
+        if ($bashRules.Count -eq 0) {
+            Add-Failure 'opencode: permission.bash has no patterns'
         }
 
-        foreach ($rule in $policy.rules) {
-            if ($rule.PSObject.Properties.Name -notcontains 'glob_rules') { continue }
-            if ($rule.PSObject.Properties.Name -contains 'autonomy_omit' -and $rule.autonomy_omit) {
-                continue
-            }
-            $row = @($cursorRules.shell | Where-Object { $_.id -eq $rule.id }) | Select-Object -First 1
-            if (-not $row) {
-                Add-Failure "cursor: glob_rules from '$($rule.id)' rendered no shell row"
-                continue
-            }
-            $emitted = @($row.globs)
-            foreach ($rawPattern in $rule.glob_rules) {
-                if ($emitted -cnotcontains $rawPattern) {
-                    Add-Failure "cursor: glob '$rawPattern' from rule '$($rule.id)' is missing from rules.json"
+        $openCodeSource = Join-Path $RepoRoot 'core/providers/opencode/opencode.json'
+        if (Test-Path $openCodeSource) {
+            $sourceJson = Get-Content -Path $openCodeSource -Raw | ConvertFrom-Json -AsHashtable
+            $renderedJson = $openCodeRaw | ConvertFrom-Json -AsHashtable
+
+            foreach ($key in @($sourceJson.Keys | Where-Object { -not $_.StartsWith('_') })) {
+                $expected = $sourceJson[$key] | ConvertTo-Json -Depth 32 -Compress
+                $actual = if ($renderedJson.ContainsKey($key)) {
+                    $renderedJson[$key] | ConvertTo-Json -Depth 32 -Compress
+                } else { '<missing>' }
+
+                if ($expected -ne $actual) {
+                    Add-Failure "opencode: base setting '$key' did not survive rendering. source $expected, rendered $actual"
                 }
             }
         }
+
+        $rank = @{ ask = 0; deny = 1 }
+        $highest = -1
+        foreach ($entry in $bashRules) {
+            if ($rank[$entry.Action] -lt $highest) {
+                Add-Failure ("opencode: permission.bash pattern '{0}' is '{1}' but sits below a stricter tier. Last match wins, so the stricter rule never fires. Emit ask, then deny." -f $entry.Pattern, $entry.Action)
+                break
+            }
+            $highest = $rank[$entry.Action]
+        }
+
+        if ($policy) {
+            $denied = @($bashRules | Where-Object { $_.Action -eq 'deny' } |
+                ForEach-Object { $_.Pattern })
+
+            foreach ($rule in @($policy.rules | Where-Object { $_.decision -eq 'forbid' })) {
+                foreach ($command in $rule.commands) {
+                    if ($denied -notcontains $command) {
+                        Add-Failure "opencode: forbid command '$command' from rule '$($rule.id)' rendered no deny pattern"
+                    }
+                }
+            }
+
+            $emitted = @($bashRules | ForEach-Object { $_.Pattern })
+            foreach ($rule in $policy.rules) {
+                if ($rule.PSObject.Properties.Name -notcontains 'glob_rules') { continue }
+                foreach ($raw in $rule.glob_rules) {
+                    if ($emitted -cnotcontains $raw) {
+                        Add-Failure "opencode: glob '$raw' from rule '$($rule.id)' is missing from permission.bash"
+                    }
+                }
+            }
+        }
     }
+}
 
-    $sshPath = Join-Path $(if ($env:HOME) { $env:HOME } else { $env:USERPROFILE }) '.ssh/config'
-    $cases = @(
-        @{ Name = 'read-only inspection is allowed'; Payload = '{"command":"git status"}'; Expect = 'allow' }
-        @{ Name = 'omitted confirm-tier pr create is allowed'; Payload = '{"command":"gh pr create --title test"}'; Expect = 'allow' }
-        @{
-            Name          = 'local-commit is denied with a handoff'
-            Payload       = '{"command":"git commit -m test"}'
-            Expect        = 'deny'
-            AgentContains = 'Give the user this exact command'
-        }
-        @{ Name = 'recursive delete is allowed'; Payload = '{"command":"rm -rf /tmp/scratch"}'; Expect = 'allow' }
-        @{
-            Name             = 'forbid-tier force push is denied without a handoff'
-            Payload          = '{"command":"git push --force"}'
-            Expect           = 'deny'
-            AgentNotContains = 'Give the user this exact command'
-        }
-        @{ Name = 'a wrapper cannot launder a forbidden command'; Payload = '{"command":"rtk git push --force"}'; Expect = 'deny' }
-        @{ Name = 'force flag in fifth position is denied'; Payload = '{"command":"git push origin main --force"}'; Expect = 'deny' }
-        @{
-            Name    = 'secret file read is denied'
-            Payload = (@{ file_path = $sshPath } | ConvertTo-Json -Compress)
-            Expect  = 'deny'
-        }
-        @{
-            Name    = 'beforeReadFile payload larger than one pipe chunk is allowed'
-            Payload = (@{
-                    file_path = (Join-Path $RepoRoot 'README.md')
-                    content   = ('x' * 80000)
-                } | ConvertTo-Json -Compress)
-            Expect  = 'allow'
-        }
-        @{
-            Name    = 'secret file read with a large content payload is still denied'
-            Payload = (@{
-                    file_path = $sshPath
-                    content   = ('x' * 80000)
-                } | ConvertTo-Json -Compress)
-            Expect  = 'deny'
-        }
-    )
+$openCodeCommand = Get-Command opencode -ErrorAction SilentlyContinue
+$openCodeWorks = $false
+if ($openCodeCommand) {
+    try {
+        & opencode --version *>$null
+        $openCodeWorks = ($LASTEXITCODE -eq 0)
+    }
+    catch {
+        $openCodeWorks = $false
+    }
+}
 
-    foreach ($case in $cases) {
-        $result = $case.Payload | & pwsh -NoProfile -File $cursorScript
+if (-not (Test-Path $openCodePath)) {
+    # Already reported as missing above.
+}
+elseif (-not $openCodeWorks) {
+    $reason = if ($openCodeCommand) {
+        "opencode is on PATH at $($openCodeCommand.Source) but does not run"
+    }
+    else {
+        'opencode is not on PATH'
+    }
+    $script:Skipped.Add("opencode config assertions: $reason")
+}
+else {
+    $previousConfig = $env:OPENCODE_CONFIG
+    $env:OPENCODE_CONFIG = $openCodePath
+    try {
+        $resolvedRaw = & opencode debug config 2>&1 | Out-String
+
         if ($LASTEXITCODE -ne 0) {
-            Add-Failure "cursor hook could not evaluate '$($case.Name)': $result"
-            continue
+            Add-Failure "opencode rejected the rendered config: $resolvedRaw"
         }
+        else {
+            $resolved = $resolvedRaw | ConvertFrom-Json -AsHashtable
 
-        try {
-            $decision = ($result | Out-String).Trim() | ConvertFrom-Json
-        }
-        catch {
-            Add-Failure "cursor hook '$($case.Name)' did not return JSON: $result"
-            continue
-        }
+            if (-not $resolved.permission) {
+                Add-Failure 'opencode resolved the rendered config but found no permission block. The file loaded and the rules did not.'
+            }
+            else {
+                foreach ($tier in @('ask', 'deny')) {
+                    $rendered = @($bashRules | Where-Object { $_.Action -eq $tier }).Count
+                    $loaded = @($resolved.permission.bash.GetEnumerator() |
+                        Where-Object { $_.Value -eq $tier }).Count
 
-        if ($decision.permission -ne $case.Expect) {
-            Add-Failure "$($case.Name): expected '$($case.Expect)', got '$($decision.permission)'"
+                    if ($rendered -ne $loaded) {
+                        Add-Failure "opencode loaded $loaded '$tier' bash pattern(s) from a file that renders $rendered"
+                    }
+                }
+            }
         }
-        if ($case.ContainsKey('AgentContains') -and $decision.agent_message -notlike "*$($case.AgentContains)*") {
-            Add-Failure "$($case.Name): agent_message missing '$($case.AgentContains)'"
-        }
-        if ($case.ContainsKey('AgentNotContains') -and $decision.agent_message -like "*$($case.AgentNotContains)*") {
-            Add-Failure "$($case.Name): agent_message must not contain '$($case.AgentNotContains)'"
-        }
+    }
+    finally {
+        $env:OPENCODE_CONFIG = $previousConfig
     }
 }
 

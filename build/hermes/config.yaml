@@ -3,22 +3,12 @@
 # Change core/policy/policy.json and run scripts/render.ps1.
 approvals:
   deny:
-    - "*git push --force*"
-    - "*git push -f*"
-    - "*git push --force-with-lease*"
-    - "*git reset --hard*"
     - "*git clean*"
     - "*git rebase --interactive*"
     - "*git filter-branch*"
-    - "*git push * --force*"
-    - "*git push * -f*"
-    - "*git push * -f *"
-    - "*git checkout --*"
     - "*git restore --staged --worktree*"
     - "*git stash drop*"
     - "*git stash clear*"
-    - "*git branch -D*"
-    - "*gh repo delete*"
     - "*gh release delete*"
     - "*gh cache delete*"
     - "*/.env*"

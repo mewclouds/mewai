@@ -1,0 +1,98 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "autoupdate": true,
+  "provider": {
+    "openrouter": {
+      "models": {
+        "z-ai/glm-5.3-flash": {
+          "options": {
+            "provider": {
+              "order": [
+                "z-ai",
+                "novita"
+              ],
+              "allow_fallbacks": false
+            }
+          }
+        }
+      }
+    }
+  },
+  "permission": {
+    "bash": {
+      "git commit": "ask",
+      "git commit *": "ask",
+      "* git commit": "ask",
+      "* git commit *": "ask",
+      "gh pr create": "ask",
+      "gh pr create *": "ask",
+      "* gh pr create": "ask",
+      "* gh pr create *": "ask",
+      "gh pr merge": "ask",
+      "gh pr merge *": "ask",
+      "* gh pr merge": "ask",
+      "* gh pr merge *": "ask",
+      "gh pr close": "ask",
+      "gh pr close *": "ask",
+      "* gh pr close": "ask",
+      "* gh pr close *": "ask",
+      "gh issue create": "ask",
+      "gh issue create *": "ask",
+      "* gh issue create": "ask",
+      "* gh issue create *": "ask",
+      "gh issue close": "ask",
+      "gh issue close *": "ask",
+      "* gh issue close": "ask",
+      "* gh issue close *": "ask",
+      "gh release create": "ask",
+      "gh release create *": "ask",
+      "* gh release create": "ask",
+      "* gh release create *": "ask",
+      "git clean": "deny",
+      "git clean *": "deny",
+      "* git clean": "deny",
+      "* git clean *": "deny",
+      "git rebase --interactive": "deny",
+      "git rebase --interactive *": "deny",
+      "* git rebase --interactive": "deny",
+      "* git rebase --interactive *": "deny",
+      "git filter-branch": "deny",
+      "git filter-branch *": "deny",
+      "* git filter-branch": "deny",
+      "* git filter-branch *": "deny",
+      "git restore --staged --worktree": "deny",
+      "git restore --staged --worktree *": "deny",
+      "* git restore --staged --worktree": "deny",
+      "* git restore --staged --worktree *": "deny",
+      "git stash drop": "deny",
+      "git stash drop *": "deny",
+      "* git stash drop": "deny",
+      "* git stash drop *": "deny",
+      "git stash clear": "deny",
+      "git stash clear *": "deny",
+      "* git stash clear": "deny",
+      "* git stash clear *": "deny",
+      "gh release delete": "deny",
+      "gh release delete *": "deny",
+      "* gh release delete": "deny",
+      "* gh release delete *": "deny",
+      "gh cache delete": "deny",
+      "gh cache delete *": "deny",
+      "* gh cache delete": "deny",
+      "* gh cache delete *": "deny"
+    },
+    "read": {
+      ".env": "deny",
+      ".env.*": "deny",
+      "**/.env.*": "deny",
+      "**/.env": "deny",
+      "**/*.pem": "deny",
+      "**/id_rsa": "deny",
+      "**/id_ed25519": "deny",
+      "~/.ssh/**": "deny",
+      "~/.aws/credentials": "deny",
+      "~/.codex/auth.json": "deny",
+      "~/.claude/.credentials.json": "deny"
+    }
+  }
+}

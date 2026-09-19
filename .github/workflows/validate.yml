@@ -59,7 +59,7 @@ jobs:
           grep -q "installed 0 file(s)" /tmp/second.txt
 
           echo "--- a hand edit must be reported as modified ---"
-          echo "drift" >> "$HOME/.claude/CLAUDE.md"
+          echo "drift" >> "$HOME/.config/opencode/AGENTS.md"
           if ./scripts/status.sh; then
             echo "status did not detect drift"
             exit 1
