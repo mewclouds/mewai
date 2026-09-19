@@ -63,24 +63,6 @@
       "sha256": "f8487df53ac6db3eea94fe8dd9a2e6b2e0f2371d61e37eeb5e81d5cc9238d85d"
     },
     {
-      "build": "build/opencode/skills/create-pr/SKILL.md",
-      "install": "~/.agents/skills/create-pr/SKILL.md",
-      "action": "copy",
-      "sources": [
-        "core/skills/create-pr/SKILL.md"
-      ],
-      "sha256": "fb503e84f20ea20a7631c6d0aca60ac078a7ca6dfdffda023b8cb712c2247d1e"
-    },
-    {
-      "build": "build/antigravity/skills/create-pr/SKILL.md",
-      "install": "~/.gemini/skills/create-pr/SKILL.md",
-      "action": "copy",
-      "sources": [
-        "core/skills/create-pr/SKILL.md"
-      ],
-      "sha256": "fb503e84f20ea20a7631c6d0aca60ac078a7ca6dfdffda023b8cb712c2247d1e"
-    },
-    {
       "build": "build/opencode/skills/create-skill/SKILL.md",
       "install": "~/.agents/skills/create-skill/SKILL.md",
       "action": "copy",
@@ -177,7 +159,7 @@
       "sources": [
         "core/skills/reply-draft/SKILL.md"
       ],
-      "sha256": "039b5d0ba7fd7477b31107e88f37221eaa91c731eb90ee75dd3ed8c649d8fcae"
+      "sha256": "bb97da7346c43dfc4f73f188db4731b64794ee5706fc813293a2504d946be23e"
     },
     {
       "build": "build/antigravity/skills/reply-draft/SKILL.md",
@@ -186,7 +168,7 @@
       "sources": [
         "core/skills/reply-draft/SKILL.md"
       ],
-      "sha256": "039b5d0ba7fd7477b31107e88f37221eaa91c731eb90ee75dd3ed8c649d8fcae"
+      "sha256": "bb97da7346c43dfc4f73f188db4731b64794ee5706fc813293a2504d946be23e"
     },
     {
       "build": "build/opencode/skills/review-pr/SKILL.md",
@@ -259,6 +241,24 @@
         "core/skills/tutor/SKILL.md"
       ],
       "sha256": "fbb68fb956b1fc134436e042a5fef02a5cfee71f62e904abcc05e9c3cae47c84"
+    },
+    {
+      "build": "build/opencode/skills/write-pr-body/SKILL.md",
+      "install": "~/.agents/skills/write-pr-body/SKILL.md",
+      "action": "copy",
+      "sources": [
+        "core/skills/write-pr-body/SKILL.md"
+      ],
+      "sha256": "21990b08057da6525e0887e49fd369b1a61ad6184cde7e1e5d37719fc3a909e6"
+    },
+    {
+      "build": "build/antigravity/skills/write-pr-body/SKILL.md",
+      "install": "~/.gemini/skills/write-pr-body/SKILL.md",
+      "action": "copy",
+      "sources": [
+        "core/skills/write-pr-body/SKILL.md"
+      ],
+      "sha256": "21990b08057da6525e0887e49fd369b1a61ad6184cde7e1e5d37719fc3a909e6"
     }
   ]
 }

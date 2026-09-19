@@ -18,11 +18,12 @@ Turns the diagnosis or review the user just finished in this conversation into a
 2. Determine the recipient's technical level from context already established in the conversation (how they were described, how they wrote, what kind of report they filed). If it genuinely isn't clear, ask the user directly rather than guessing.
 3. If what was actually resolved or found is itself unclear or the conversation didn't land on a concrete cause or fix, stop and ask the user what to say rather than drafting around a guess.
 4. Draft the reply:
-   - Lead with why it's happening, then what fixes it. No preamble, no throat-clearing.
+   - Drop the fluff: hedging, recap, throat-clearing, and corporate padding. Keep the warmth. Be straightforward.
+   - Most readers care about the solution. Lead with what fixes it, then the cause only if it helps them act.
    - For a non-technical recipient: plain words only, no backtick-formatted terms, no internal implementation detail they didn't ask for.
    - For a technical recipient: technical detail and code blocks are fine where they carry real information.
    - No em dashes, no semicolons joining clauses.
-   - Warm, direct, like a person wrote it. Not blunt, not corporate, not padded with hedging.
+   - Warm, direct, like a person wrote it. Not blunt, not corporate.
 5. Output the reply in Markdown so code blocks or commands render correctly when pasted, followed by one line stating the tone/audience call made (e.g. "kept this non-technical, no mention of a dev background").
 
 ## Output
@@ -32,5 +33,6 @@ A Markdown reply block ready to copy-paste, followed by a single-line rationale 
 ## Validation
 
 - The draft contains no em dashes, no clause-joining semicolons, and no backtick-wrapped terms when written for a non-technical recipient.
-- The reply states the cause and the fix before anything else.
+- The draft is warm and straightforward. It dropped hedging, recap, and padding, not warmth.
+- The reply leads with the solution.
 - If the underlying finding or the recipient's technical level was unclear, the skill asked instead of guessing.
