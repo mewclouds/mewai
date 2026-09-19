@@ -17,6 +17,13 @@
       "sha256": "ebaf5668ed6e4b5f77d8b899d00a5e06af88d78660a7d273911efdce297507a0"
     },
     {
+      "build": "build/codex/AGENTS.md",
+      "install": "~/.codex/AGENTS.md",
+      "action": "copy",
+      "sources": "core/instructions/base.md",
+      "sha256": "ebaf5668ed6e4b5f77d8b899d00a5e06af88d78660a7d273911efdce297507a0"
+    },
+    {
       "build": "build/opencode/opencode.jsonc",
       "install": "~/.config/opencode/opencode.jsonc",
       "action": "copy",
@@ -25,6 +32,24 @@
         "core/policy/policy.json"
       ],
       "sha256": "c51c8c9b5e920a1941d0cac84f74e60d81ef19f7dcd4f902bba8d6c88f9b86d1"
+    },
+    {
+      "build": "build/codex/rules/default.rules",
+      "install": "~/.codex/rules/default.rules",
+      "action": "copy",
+      "sources": [
+        "core/policy/policy.json"
+      ],
+      "sha256": "293bed51877cd12a67c357124f28ff60777b3223e5235bf46c5c10e0ab0015f5"
+    },
+    {
+      "build": "build/codex/config.toml",
+      "install": "~/.codex/config.toml",
+      "action": "copy",
+      "sources": [
+        "core/providers/codex/config.toml"
+      ],
+      "sha256": "721d89e92c9d14db4e4e2995b258f37d9094d60d467bc14098c71d5d7a99a485"
     },
     {
       "build": "build/opencode/skills/code-review/SKILL.md",

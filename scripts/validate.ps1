@@ -448,6 +448,109 @@ else {
     }
 }
 
+# --- codex execpolicy --------------------------------------------------------
+# These assertions prove the rendered rules actually decide the way the policy says.
+# They need a working codex binary. When there is not one, say so: a check that could
+# not run must never read as a check that passed.
+
+$HomeDir = if ($env:HOME) { $env:HOME } else { $env:USERPROFILE }
+$codexRulesPath = Join-Path $RepoRoot 'build/codex/rules/default.rules'
+$codexConfigPath = Join-Path $RepoRoot 'build/codex/config.toml'
+$codexSourceConfig = Join-Path $RepoRoot 'core/providers/codex/config.toml'
+
+if (-not (Test-Path $codexSourceConfig)) {
+    Add-Failure 'core/providers/codex/config.toml is missing'
+}
+if (-not (Test-Path $codexRulesPath)) {
+    Add-Failure 'build/codex/rules/default.rules is missing'
+}
+if (-not (Test-Path $codexConfigPath)) {
+    Add-Failure 'build/codex/config.toml is missing'
+}
+
+if (Test-Path $codexRulesPath) {
+    $rulesRaw = (Get-Content -Path $codexRulesPath -Raw) -replace "`r`n", "`n"
+
+    if ($policy) {
+        foreach ($rule in $policy.rules) {
+            if (@($rule.commands).Count -eq 0) { continue }
+
+            foreach ($command in $rule.commands) {
+                $words = $command -split '\s+' | Where-Object { $_ }
+                $pattern = ($words | ForEach-Object { '"' + $_ + '"' }) -join ', '
+                if ($rulesRaw -notmatch [regex]::Escape("pattern=[$pattern]")) {
+                    Add-Failure "codex: command '$command' from rule '$($rule.id)' rendered no prefix_rule"
+                }
+            }
+        }
+    }
+
+    $codexCommand = Get-Command codex -ErrorAction SilentlyContinue
+    $codexExe = if ($codexCommand) {
+        $codexCommand.Source
+    }
+    else {
+        $localApp = if ($env:LOCALAPPDATA) { $env:LOCALAPPDATA } else { Join-Path $HomeDir 'AppData/Local' }
+        $candidate = Get-ChildItem -Path (Join-Path $localApp 'OpenAI/Codex/bin/*/codex.exe') -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($candidate) { $candidate.FullName } else { $null }
+    }
+
+    $codexWorks = $false
+    if ($codexExe) {
+        try {
+            & $codexExe --version *>$null
+            $codexWorks = ($LASTEXITCODE -eq 0)
+        }
+        catch {
+            $codexWorks = $false
+        }
+    }
+
+    if (-not $codexWorks) {
+        $reason = if ($codexExe) {
+            "codex is at $codexExe but does not run"
+        }
+        else {
+            'codex is not on PATH or local AppData'
+        }
+        $script:Skipped.Add("codex execpolicy assertions: $reason")
+    }
+    else {
+        $cases = @(
+            @{ Name = 'read-only inspection is allowed'; Args = @('rg', '--files'); Expect = 'allow' }
+            @{ Name = 'git commit requires confirmation'; Args = @('git', 'commit', '-m', 'test'); Expect = 'prompt' }
+            @{ Name = 'history rewrite is forbidden'; Args = @('git', 'clean'); Expect = 'forbidden' }
+        )
+
+        foreach ($case in $cases) {
+            $result = & $codexExe execpolicy check --rules $codexRulesPath @($case.Args) 2>&1
+            if ($LASTEXITCODE -ne 0) {
+                Add-Failure "codex execpolicy could not evaluate '$($case.Name)': $result"
+                continue
+            }
+
+            $parsed = $result | ConvertFrom-Json
+            $decision = if ($parsed.PSObject.Properties.Name -contains 'decision') {
+                $parsed.decision
+            }
+            elseif (
+                ($parsed.PSObject.Properties.Name -contains 'matchedRules') -and
+                (@($parsed.matchedRules).Count -eq 0)
+            ) {
+                # Codex 0.153 emits { matchedRules: [] } for unmatched commands, not decision=allow.
+                'allow'
+            }
+            else {
+                $null
+            }
+
+            if ($decision -ne $case.Expect) {
+                Add-Failure "$($case.Name): expected '$($case.Expect)', got '$decision'"
+            }
+        }
+    }
+}
+
 # --- report ------------------------------------------------------------------
 
 foreach ($skip in $script:Skipped) {

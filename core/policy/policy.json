@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "note": "Single source for command boundaries. Rendered into OpenCode permission rules. Edit this file, then run scripts/render.ps1.",
+  "note": "Single source for command boundaries. Rendered into OpenCode permission rules and Codex execpolicy. Edit this file, then run scripts/render.ps1.",
   "decisions": {
     "confirm": "Prompts every time on OpenCode.",
     "forbid": "Blocked."

@@ -4,9 +4,10 @@
     Pulls locally modified settings into core/ and re-renders.
 
 .DESCRIPTION
-    Reverse of install: reads the installed provider settings file
-    (~/.config/opencode/opencode.jsonc), strips any generated policy permissions,
-    and writes the user settings back into core/providers/.
+    Reverse of install: reads installed provider settings files
+    (~/.config/opencode/opencode.jsonc and ~/.codex/config.toml),
+    strips any generated policy permissions, and writes the user settings back into
+    core/providers/.
 
     Only settings files are reversed. Skills, instructions, and policy rules are
     never reversed.
@@ -84,6 +85,29 @@ if (Test-Path $openCodeInstalled) {
         else {
             Write-Utf8NoBom -Path $openCodeCore -Content $openCodeJson
             Write-Host "reversed ~/.config/opencode/opencode.jsonc -> core/providers/opencode/opencode.json"
+        }
+        $reversedCount++
+    }
+}
+
+# --- codex config ------------------------------------------------------------
+$codexInstalled = Join-Path $HomeDir '.codex/config.toml'
+$codexBuild = Join-Path $BuildDir 'codex/config.toml'
+$codexCore = Join-Path $CoreDir 'providers/codex/config.toml'
+
+if (Test-Path $codexInstalled) {
+    $installedSha = Get-FileSha256 -Path $codexInstalled
+    $buildSha = Get-FileSha256 -Path $codexBuild
+
+    if ($installedSha -ne $buildSha) {
+        $content = Get-Content -Path $codexInstalled -Raw
+
+        if ($DryRun) {
+            Write-Host "would reverse ~/.codex/config.toml -> core/providers/codex/config.toml"
+        }
+        else {
+            Write-Utf8NoBom -Path $codexCore -Content $content
+            Write-Host "reversed ~/.codex/config.toml -> core/providers/codex/config.toml"
         }
         $reversedCount++
     }

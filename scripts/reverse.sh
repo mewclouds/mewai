@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Pulls locally modified settings into core/ and re-renders.
 #
-# Reverse of install: reads the installed provider settings file
-# (~/.config/opencode/opencode.jsonc), strips any generated policy permissions,
-# and writes the user settings back into core/providers/.
+# Reverse of install: reads installed provider settings files
+# (~/.config/opencode/opencode.jsonc and ~/.codex/config.toml),
+# strips any generated policy permissions, and writes the user settings back into
+# core/providers/.
 #
 # Only settings files are reversed. Skills, instructions, and policy rules are
 # never reversed.
@@ -76,6 +77,29 @@ if [[ -f "$opencode_installed" ]]; then
       ' "$opencode_installed" | tr -d '\r' > "$temp_out"
       mv "$temp_out" "$opencode_core"
       printf 'reversed ~/.config/opencode/opencode.jsonc -> core/providers/opencode/opencode.json\n'
+    fi
+    reversed_count=$((reversed_count + 1))
+  fi
+fi
+
+# --- codex config ------------------------------------------------------------
+codex_installed="$HOME/.codex/config.toml"
+codex_build="$repo_root/build/codex/config.toml"
+codex_core="$repo_root/core/providers/codex/config.toml"
+
+if [[ -f "$codex_installed" ]]; then
+  installed_sha="$(sha_of "$codex_installed")"
+  build_sha=""
+  if [[ -f "$codex_build" ]]; then
+    build_sha="$(sha_of "$codex_build")"
+  fi
+
+  if [[ "$installed_sha" != "$build_sha" ]]; then
+    if "$dry_run"; then
+      printf 'would reverse ~/.codex/config.toml -> core/providers/codex/config.toml\n'
+    else
+      tr -d '\r' < "$codex_installed" > "$codex_core"
+      printf 'reversed ~/.codex/config.toml -> core/providers/codex/config.toml\n'
     fi
     reversed_count=$((reversed_count + 1))
   fi
