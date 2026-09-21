@@ -15,11 +15,11 @@ pwsh ./scripts/status.ps1
 ```
 
 On Unix the same jobs are `install.sh`, `status.sh`, `uninstall.sh`, and
-`reverse.sh`. Install and uninstall take `--dry-run`. Uninstall needs `--confirm`
-to actually delete anything. `reverse` pulls settings I changed in a harness
-back into `core/providers/`.
+`reverse.sh`. These are thin wrappers around the PowerShell scripts. Install and
+reverse take `--dry-run`. Uninstall needs `--confirm` to delete anything.
+`reverse` pulls settings I changed in a harness back into `core/providers/`.
 
-PowerShell 7 for render and validate. `jq` for the shell scripts.
+All commands require PowerShell 7. The shell wrappers add no other dependency.
 
 `docs/AUTHORING.md` when adding a rule, skill, or policy entry.
 `docs/PROVIDERS.md` when a provider's matching behavior matters.

@@ -45,14 +45,16 @@ jobs:
         if: runner.os == 'Linux'
         run: shellcheck scripts/install.sh scripts/status.sh scripts/uninstall.sh scripts/reverse.sh
 
-      - name: Install into a temporary home
+      - name: Management commands in a temporary home
         if: runner.os == 'Linux'
         run: |
-          # Proves install, idempotence, and drift detection without touching the
-          # runner's real home directory.
+          # Proves the Unix wrappers and the PowerShell implementation together.
           export HOME="$(mktemp -d)"
           ./scripts/install.sh
           ./scripts/status.sh
+          ./scripts/install.sh --dry-run
+          bash ./scripts/reverse.sh --dry-run
+          ./scripts/uninstall.sh | grep -q "Nothing was changed"
 
           echo "--- second install must change nothing ---"
           ./scripts/install.sh | tee /tmp/second.txt

@@ -12,9 +12,7 @@
     depends on that, because it re-renders and fails when git reports a diff.
 #>
 [CmdletBinding()]
-param(
-    [switch]$Check
-)
+param()
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'

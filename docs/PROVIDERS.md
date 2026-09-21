@@ -31,4 +31,4 @@ Codex execpolicy assertions in `validate.ps1` run only when `codex` is on PATH. 
 
 ## OpenCode config is `.jsonc`
 
-When both `opencode.json` and `opencode.jsonc` exist, `.jsonc` wins. Target that name. `reverse.sh` cannot parse comments in it. Run `reverse.ps1` if OpenCode wrote any.
+When both `opencode.json` and `opencode.jsonc` exist, `.jsonc` wins. Target that name. Both reverse commands use PowerShell and can parse its comments.

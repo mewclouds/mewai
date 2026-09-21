@@ -523,13 +523,30 @@ if (Test-Path $codexRulesPath) {
         )
 
         foreach ($case in $cases) {
-            $result = & $codexExe execpolicy check --rules $codexRulesPath @($case.Args) 2>&1
-            if ($LASTEXITCODE -ne 0) {
-                Add-Failure "codex execpolicy could not evaluate '$($case.Name)': $result"
+            $stderrPath = [System.IO.Path]::GetTempFileName()
+            [string]$stderrText = ''
+            try {
+                $result = & $codexExe execpolicy check --rules $codexRulesPath @($case.Args) 2> $stderrPath
+                $exitCode = $LASTEXITCODE
+                $stderrText = [string](Get-Content -Path $stderrPath -Raw -ErrorAction SilentlyContinue)
+            }
+            finally {
+                Remove-Item -LiteralPath $stderrPath -Force -ErrorAction SilentlyContinue
+            }
+
+            if ($exitCode -ne 0) {
+                $details = (@($result) + @($stderrText.Trim())) -join "`n"
+                Add-Failure "codex execpolicy could not evaluate '$($case.Name)': $details"
                 continue
             }
 
-            $parsed = $result | ConvertFrom-Json
+            try {
+                $parsed = $result | ConvertFrom-Json
+            }
+            catch {
+                Add-Failure "codex execpolicy returned invalid JSON for '$($case.Name)': $result"
+                continue
+            }
             $decision = if ($parsed.PSObject.Properties.Name -contains 'decision') {
                 $parsed.decision
             }

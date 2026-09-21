@@ -48,69 +48,101 @@ function Get-FileSha256 {
     (Get-FileHash -Path $Path -Algorithm SHA256).Hash.ToLowerInvariant()
 }
 
-$reversedCount = 0
+function Get-NormalizedFileContent {
+    param([string]$Path)
+    if (-not (Test-Path $Path)) { return $null }
+    (Get-Content -Path $Path -Raw) -replace "`r`n", "`n"
+}
 
-# --- opencode config ---------------------------------------------------------
+function Get-OpenCodeBaseJson {
+    param([string]$Path)
+
+    $settings = Get-Content -Path $Path -Raw | ConvertFrom-Json
+    $base = [ordered]@{}
+    foreach ($property in $settings.PSObject.Properties) {
+        if ($property.Name.StartsWith('_') -or $property.Name -eq 'permission') { continue }
+        $base[$property.Name] = $property.Value
+    }
+    $base | ConvertTo-Json -Depth 32 -Compress
+}
+
 $openCodeInstalled = Join-Path $HomeDir '.config/opencode/opencode.jsonc'
 $openCodeBuild = Join-Path $BuildDir 'opencode/opencode.jsonc'
 $openCodeCore = Join-Path $CoreDir 'providers/opencode/opencode.json'
-
-if (Test-Path $openCodeInstalled) {
-    $installedSha = Get-FileSha256 -Path $openCodeInstalled
-    $buildSha = Get-FileSha256 -Path $openCodeBuild
-
-    if ($installedSha -ne $buildSha) {
-        $installed = Get-Content -Path $openCodeInstalled -Raw | ConvertFrom-Json
-        $coreExisting = if (Test-Path $openCodeCore) { Get-Content -Path $openCodeCore -Raw | ConvertFrom-Json } else { $null }
-
-        $reversedOpenCode = [ordered]@{}
-
-        $topComment = if ($coreExisting -and ($coreExisting.PSObject.Properties.Name -contains '_comment')) {
-            $coreExisting._comment
-        } else {
-            'Base OpenCode settings owned by mewai. The permission block is generated from core/policy/policy.json by scripts/render.ps1 and must not be set here. Everything else is yours to edit.'
-        }
-        $reversedOpenCode['_comment'] = $topComment
-
-        foreach ($prop in $installed.PSObject.Properties) {
-            if ($prop.Name.StartsWith('_') -or $prop.Name -eq 'permission') { continue }
-            $reversedOpenCode[$prop.Name] = $prop.Value
-        }
-
-        $openCodeJson = ($reversedOpenCode | ConvertTo-Json -Depth 32 -WarningAction Stop) + "`n"
-
-        if ($DryRun) {
-            Write-Host "would reverse ~/.config/opencode/opencode.jsonc -> core/providers/opencode/opencode.json"
-        }
-        else {
-            Write-Utf8NoBom -Path $openCodeCore -Content $openCodeJson
-            Write-Host "reversed ~/.config/opencode/opencode.jsonc -> core/providers/opencode/opencode.json"
-        }
-        $reversedCount++
-    }
-}
-
-# --- codex config ------------------------------------------------------------
 $codexInstalled = Join-Path $HomeDir '.codex/config.toml'
 $codexBuild = Join-Path $BuildDir 'codex/config.toml'
 $codexCore = Join-Path $CoreDir 'providers/codex/config.toml'
 
-if (Test-Path $codexInstalled) {
-    $installedSha = Get-FileSha256 -Path $codexInstalled
-    $buildSha = Get-FileSha256 -Path $codexBuild
+$openCodeNeedsReverse = (Test-Path $openCodeInstalled) -and
+    ((Get-FileSha256 -Path $openCodeInstalled) -ne (Get-FileSha256 -Path $openCodeBuild))
+$codexNeedsReverse = (Test-Path $codexInstalled) -and
+    ((Get-FileSha256 -Path $codexInstalled) -ne (Get-FileSha256 -Path $codexBuild))
 
-    if ($installedSha -ne $buildSha) {
-        $content = Get-Content -Path $codexInstalled -Raw
-
-        if ($DryRun) {
-            Write-Host "would reverse ~/.codex/config.toml -> core/providers/codex/config.toml"
-        }
-        else {
-            Write-Utf8NoBom -Path $codexCore -Content $content
-            Write-Host "reversed ~/.codex/config.toml -> core/providers/codex/config.toml"
-        }
-        $reversedCount++
+$openCodeInstalledSettings = $null
+if ($openCodeNeedsReverse) {
+    if (-not (Test-Path $openCodeBuild) -or -not (Test-Path $openCodeCore)) {
+        throw 'OpenCode reverse needs both the rendered file and its source file.'
     }
+    if ((Get-OpenCodeBaseJson -Path $openCodeCore) -cne (Get-OpenCodeBaseJson -Path $openCodeBuild)) {
+        throw 'conflict: the OpenCode source and installed file both changed since the last render. Reconcile them before reverse.'
+    }
+    $openCodeInstalledSettings = Get-Content -Path $openCodeInstalled -Raw | ConvertFrom-Json
+}
+
+if ($codexNeedsReverse) {
+    if (-not (Test-Path $codexBuild) -or -not (Test-Path $codexCore)) {
+        throw 'Codex reverse needs both the rendered file and its source file.'
+    }
+    if ((Get-NormalizedFileContent -Path $codexCore) -cne (Get-NormalizedFileContent -Path $codexBuild)) {
+        throw 'conflict: the Codex source and installed file both changed since the last render. Reconcile them before reverse.'
+    }
+}
+
+$reversedCount = 0
+
+# --- opencode config ---------------------------------------------------------
+if ($openCodeNeedsReverse) {
+    $installed = $openCodeInstalledSettings
+    $coreExisting = if (Test-Path $openCodeCore) { Get-Content -Path $openCodeCore -Raw | ConvertFrom-Json } else { $null }
+
+    $reversedOpenCode = [ordered]@{}
+
+    $topComment = if ($coreExisting -and ($coreExisting.PSObject.Properties.Name -contains '_comment')) {
+        $coreExisting._comment
+    } else {
+        'Base OpenCode settings owned by mewai. The permission block is generated from core/policy/policy.json by scripts/render.ps1 and must not be set here. Everything else is yours to edit.'
+    }
+    $reversedOpenCode['_comment'] = $topComment
+
+    foreach ($prop in $installed.PSObject.Properties) {
+        if ($prop.Name.StartsWith('_') -or $prop.Name -eq 'permission') { continue }
+        $reversedOpenCode[$prop.Name] = $prop.Value
+    }
+
+    $openCodeJson = ($reversedOpenCode | ConvertTo-Json -Depth 32 -WarningAction Stop) + "`n"
+
+    if ($DryRun) {
+        Write-Host "would reverse ~/.config/opencode/opencode.jsonc -> core/providers/opencode/opencode.json"
+    }
+    else {
+        Write-Utf8NoBom -Path $openCodeCore -Content $openCodeJson
+        Write-Host "reversed ~/.config/opencode/opencode.jsonc -> core/providers/opencode/opencode.json"
+    }
+    $reversedCount++
+}
+
+# --- codex config ------------------------------------------------------------
+if ($codexNeedsReverse) {
+    $content = Get-Content -Path $codexInstalled -Raw
+
+    if ($DryRun) {
+        Write-Host "would reverse ~/.codex/config.toml -> core/providers/codex/config.toml"
+    }
+    else {
+        Write-Utf8NoBom -Path $codexCore -Content $content
+        Write-Host "reversed ~/.codex/config.toml -> core/providers/codex/config.toml"
+    }
+    $reversedCount++
 }
 
 # --- finalize ----------------------------------------------------------------
